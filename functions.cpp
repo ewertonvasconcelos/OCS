@@ -21,6 +21,7 @@
 #include <set>
 #include "utils.cpp"
 #include <algorithm>
+#include <iomanip>
 
 using namespace std;
 
@@ -93,9 +94,18 @@ int GetNumberOfNodes( vector<Components*> vec, vector<int>& nodes  ) {
 	return nodesList.size();
 }
 
-void printMatrix ( vector<vector<double> > matrix( int, vector<double>(int)) ) {
-	for (unsigned int i = 0; i < matrix[i].size(); i++) {
-		for (unsigned int j = 0; i < matrix[j].size(), j++) {
-			cout << matrix[i][j]
+void printMatrix ( vector<vector<double> > matrix ) {
+	for (unsigned int i = 0; i < matrix.size(); i++) {
+		cout << "|"; 
+		for (unsigned int j = 0; j < (matrix.at(0)).size(); j++) {
+		  cout << std::setiosflags(std::ios::fixed)
+          << std::setprecision(3)
+          << std::setw(10)
+          << std::right
+          << matrix[i][j] ;
 		}
+		cout << "|" << endl;
+		
 	}
+}
+

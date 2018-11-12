@@ -33,12 +33,12 @@ class Resistor : public Components {
 			return this->resistance;
 		}
 		
-		
-		void stamp(vector<vector<double> >& conductances,
+				/*void stamp(vector<vector<double> >& conductances,
 				vector<double>& currents,
 				vector<string> nodes,
-				vector<double> results)
-		{
+				vector<double> results)*/
+				
+		void stamp(vector<vector<double> >& conductances) {
 				conductances[noA][noA] += 1/resistance;
 				conductances[noB][noB] += 1/resistance;
 				conductances[noA][noB] += -1/resistance;

@@ -42,6 +42,7 @@ class Components
 	  // Vdc Virtual Functions
 	  double virtual getVdcValue() {return 0;};
 	  string virtual getVdcType() {return "";};
+	  void virtual stamp(vector<vector<double> >& conductances) {};
 };
 
 #endif

@@ -49,11 +49,18 @@ int main ()
 			cout << listFromNet.at(i)->getResistance() << endl;
 	}
 	
-
+	
+	//stamp all elements
+	for (unsigned int i = 0; i < listFromNet.size(); i++) {
+		cout << "#" << i  << endl;
+		listFromNet.at(i)->stamp(conductances);
+	}
 	
 	
-	cout << "nNodes: " <<  conductances << endl;
+	
+	printMatrix(conductances);
 	
 
   return OK;
 }
+
