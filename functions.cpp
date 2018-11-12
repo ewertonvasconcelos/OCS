@@ -71,7 +71,7 @@ vector<Components*> ParseNetlits(string fileName) {
 }
   
   
-int GetNumberOfNodes( vector<Components*> vec, vector<int>& nodes  ) {
+int GetNumberOfNodes( vector<Components*> vec, vector<string>& nodes  ) {
 	vector<int> nodesList;
 	int a,b,c,d;
 
@@ -90,7 +90,10 @@ int GetNumberOfNodes( vector<Components*> vec, vector<int>& nodes  ) {
 		if ( find(nodesList.begin(), nodesList.end(), d) == nodesList.end() )
 			nodesList.push_back(vec.at(i)->noD);	
 	}
-	nodes = nodesList;
+	sort(nodesList.begin(), nodesList.end());
+	for (unsigned int i = 0; i < nodesList.size(); i++) 
+		nodes.push_back("v" + to_string(nodesList.at(i)));
+	
 	return nodesList.size();
 }
 
@@ -109,3 +112,8 @@ void printMatrix ( vector<vector<double> > matrix ) {
 	}
 }
 
+void printMatrixString ( vector<string> matrix ) {
+	for (unsigned int i = 0; i < matrix.size(); i++) 
+		cout << "| "<< matrix[i] << "|" << endl;
+	
+}

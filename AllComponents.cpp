@@ -38,7 +38,10 @@ class Resistor : public Components {
 				vector<string> nodes,
 				vector<double> results)*/
 				
-		void stamp(vector<vector<double> >& conductances) {
+		void stamp(vector<vector<double> >& conductances,
+				vector<double>& currents,
+				vector<string> nodes)
+				{
 				conductances[noA][noA] += 1/resistance;
 				conductances[noB][noB] += 1/resistance;
 				conductances[noA][noB] += -1/resistance;
@@ -74,8 +77,7 @@ class Vdc : public Components {
 
 		void stamp(vector<vector<double> >& conductances,
 				vector<double>& currents,
-				vector<string> nodes,
-				vector<double> results)
+				vector<string> nodes)
 		{
 				vector<string>::iterator it;
 				it = find(nodes.begin(), nodes.end(), "j"+name);

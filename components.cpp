@@ -30,10 +30,7 @@ class Components
       int noB;
       int noC;
       int noD;
-	  /*void virtual stamp(vector<vector<double> >& conductances,
-				vector<double>& currents,
-				vector<string> nodes,
-				vector<double> results);
+	  /*void virtual stamp(
 	 
 	  // Resistor Virtual Functions
 	  */
@@ -42,7 +39,9 @@ class Components
 	  // Vdc Virtual Functions
 	  double virtual getVdcValue() {return 0;};
 	  string virtual getVdcType() {return "";};
-	  void virtual stamp(vector<vector<double> >& conductances) {};
+	  void virtual stamp(vector<vector<double> >& conductances,
+				vector<double>& currents,
+				vector<string> nodes) {};
 };
 
 #endif

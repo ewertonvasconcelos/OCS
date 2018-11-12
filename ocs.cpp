@@ -29,8 +29,11 @@ int main ()
   
   vector<Components*> listFromNet;
   int nNodes, nVirtualCurrents=0;
-  vector<int> nodes;
-  
+  vector<string> nodes;
+  vector<double> currents;
+  //vector<string> currentNodes;
+  vector<double> results;
+				
   listFromNet = ParseNetlits(fileName);
   nNodes=GetNumberOfNodes(listFromNet, nodes);
   
@@ -53,12 +56,13 @@ int main ()
 	//stamp all elements
 	for (unsigned int i = 0; i < listFromNet.size(); i++) {
 		cout << "#" << i  << endl;
-		listFromNet.at(i)->stamp(conductances);
+		listFromNet.at(i)->stamp(conductances,currents,nodes);
 	}
 	
 	
 	
 	printMatrix(conductances);
+	printMatrixString(nodes);
 	
 
   return OK;
