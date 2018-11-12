@@ -24,6 +24,8 @@ class Resistor : public Components {
 				name = n;
 				noA = a;
 				noB = b;
+				noC=0;
+				noD=0;
 				resistance = v;
 		}
 		
@@ -57,6 +59,8 @@ class Vdc : public Components {
 			name = n;
 			noA = a;
 			noB = b;
+			noC=0;
+			noD=0;
 			vdc = v;
 		}
 		

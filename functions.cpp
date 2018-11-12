@@ -20,6 +20,7 @@
 #include <vector>
 #include <set>
 #include "utils.cpp"
+#include <algorithm>
 
 using namespace std;
 
@@ -30,7 +31,6 @@ vector<Components*> ParseNetlits(string fileName) {
   string line;
   char type;
   vector<string> param;
-  int nParam;
   
   netlist.open("teste.net", ios::in);
   
@@ -40,7 +40,6 @@ vector<Components*> ParseNetlits(string fileName) {
   }
   
   while (getline(netlist,line)) {
-	  nParam = countWords(line);
 	  param = split(line);
 	  type = param[0][0];
 	  
@@ -71,13 +70,32 @@ vector<Components*> ParseNetlits(string fileName) {
 }
   
   
-int GetNumberOfNodes( vector<Components*> vec ) {
-	/*
-	set<Components*> s( listFromNet.begin(), listFromNet.end() );
-	cout << unique( listFromNet.begin(), listFromNet.end() );
-	return s.size();*/
-	
-	cout << foos( vec.begin(), vec.end() ) << endl;
+int GetNumberOfNodes( vector<Components*> vec, vector<int>& nodes  ) {
+	vector<int> nodesList;
+	int a,b,c,d;
 
-	return vec.size();
+  	for (unsigned int i = 0; i < vec.size(); i++) {
+		a=vec.at(i)->noA;
+		b=vec.at(i)->noB;
+		c=vec.at(i)->noC;
+		d=vec.at(i)->noD;
+		
+		if ( find(nodesList.begin(), nodesList.end(), a) == nodesList.end() )
+			nodesList.push_back(vec.at(i)->noA);
+		if ( find(nodesList.begin(), nodesList.end(), b) == nodesList.end() )
+			nodesList.push_back(vec.at(i)->noB);          
+		if ( find(nodesList.begin(), nodesList.end(), c) == nodesList.end() )
+			nodesList.push_back(vec.at(i)->noC);          
+		if ( find(nodesList.begin(), nodesList.end(), d) == nodesList.end() )
+			nodesList.push_back(vec.at(i)->noD);	
+	}
+	nodes = nodesList;
+	return nodesList.size();
 }
+
+void printMatrix ( vector<vector<double> > matrix( int, vector<double>(int)) ) {
+	for (unsigned int i = 0; i < matrix[i].size(); i++) {
+		for (unsigned int j = 0; i < matrix[j].size(), j++) {
+			cout << matrix[i][j]
+		}
+	}

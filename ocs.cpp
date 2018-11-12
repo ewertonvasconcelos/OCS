@@ -28,12 +28,19 @@ int main ()
   string fileName = "simples.net";
   
   vector<Components*> listFromNet;
-  int nNodes;
-
+  int nNodes, nVirtualCurrents=0;
+  vector<int> nodes;
+  
   listFromNet = ParseNetlits(fileName);
+  nNodes=GetNumberOfNodes(listFromNet, nodes);
+  
+  vector<double> result(nNodes + nVirtualCurrents);
+  vector<vector<double> > conductances( nNodes + nVirtualCurrents, vector<double>(nNodes + nVirtualCurrents));
+  vector<double> correntes(nNodes + nVirtualCurrents);
+
   
   
-  	for (int i = 0; i < listFromNet.size(); i++) {
+  	for (unsigned int i = 0; i < listFromNet.size(); i++) {
 		//listFromNet.at(i)->stamp(mt1)
 		cout << listFromNet.at(i)->getName() << endl;
 		cout << listFromNet.at(i)->noA << endl;
@@ -42,9 +49,10 @@ int main ()
 			cout << listFromNet.at(i)->getResistance() << endl;
 	}
 	
-	nNodes=GetNumberOfNodes(listFromNet);
+
 	
-	cout << "nNodes: " << nNodes << endl;
+	
+	cout << "nNodes: " <<  conductances << endl;
 	
 
   return OK;
