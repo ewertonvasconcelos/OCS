@@ -1173,7 +1173,7 @@ main() {
   //printf("########%f # %f # %f # %d\n", tempo, passo, theta, passosInt);
  
   printf("Programa de Analise Nodal Modificada Compacta no Tempo (Versao %s)\r\n", versao);
-  printf("Por Matheus F. Moreno e Paulo Victor S. Lima\r\n");
+  printf("Por Ewerton V., Matheus G., Gabriel L., Antônio G. \r\n");
   printf("Codigo base por Antonio Carlos M. de Queiroz\r\n");
   srand((unsigned int)time(NULL));
 
