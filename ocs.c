@@ -1,13 +1,15 @@
 /*
  * Programa de Analise Nodal Modificada no Tempo Compacta
- * Por: Matheus Fernandes Moreno (matheus.moreno@poli.ufrj.br)
- *      Paulo Victor Sant'Anna Pedroso de Lima (pv019@poli.ufrj.br)
+ * Por: Ewerton Vasconcelso (ewerton.vasconcelos@poli.ufrj.br)
+ *      Gabriel Silva Lopes
+ *      Mateus Gonçalves Guina
+ *      Antônio Galvão
  *
  * Baseado no programa de demonstracao de analise nodal modificada compacta
  * do professor Antonio Carlos M. de Queiroz.
  *
  * Universidade Federal do Rio de Janeiro - UFRJ
- * Circuitos Eletricos II - 2018.1
+ * Circuitos Eletricos II - 2018.2
  * Professor: Antonio Carlos M. de Queiroz (acmq@coe.ufrj.br)
  *
  */
@@ -26,8 +28,14 @@
  * Amp. de Corrente:     F<nome> <noI+> <noI-> <noi+> <noi-> <Ai>
  * Transcondutor:        G<nome> <noI+> <noI-> <nov+> <nov-> <Gm>
  * Transresistor:        H<nome> <noV+> <noV-> <noi+> <noi-> <Rm>
- * Diodo:                D<nome> <no+> <no-> <Is> <nVt>
- * Transistor bipolar:   Q<nome> <noc> <nob> <noe> <tipo> <a> <ar> <Isbe> <nVtbe> <Isbc> <nVtbc>
+ * AND:                  )<nome> <nóentrada> <nóentrada> <nósaída>  <V> <R> <C> <A>.
+ * NAND:                 (<nome> <nóentrada> <nóentrada> <nósaída> <nóentrada> <nóentrada> <nósaída>
+ * OR:                   }<nome> <nóentrada> <nóentrada> <nósaída> <nóentrada> <nóentrada> <nósaída>
+ * NOR:                  {<nome> <nóentrada> <nóentrada> <nósaída> <nóentrada> <nóentrada> <nósaída>
+ * Flip-Flop:            %<nome> <nóQ+> <nóQ-> <nóD> <nóCk> [<Reset>]  <V> <R> <C>
+ * Monoestável:          @<nome> <nóQ+> <nóQ-> <nóTrigger> <nóReset> <V> <R> <C> <T>
+ * Reset:                !<nome> <nóSet> <nóReset> <Parâmetros>
+ * Comentário:           *<comentário>
  *
  */
 
@@ -36,7 +44,7 @@
 #define _CRT_SECURE_NO_WARNINGS   // Impede que o VS reclame de algumas funcoes
 #endif
 
-#define versao "1.0 - 06/2018"
+#define versao "1.0"
 #include <stdio.h>
 #include <conio.h>
 #include <ctype.h>
