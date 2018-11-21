@@ -1,17 +1,40 @@
 /*
  * Programa de Analise Nodal Modificada no Tempo Compacta
- * Por: Ewerton Vasconcelso (ewerton.vasconcelos@poli.ufrj.br)
- *      Gabriel Silva Lopes
- *      Mateus Gonçalves Guina
- *      Antônio Galvão
+ * Por: Matheus Fernandes Moreno (matheus.moreno@poli.ufrj.br)
+ *      Paulo Victor Sant'Anna Pedroso de Lima (pv019@poli.ufrj.br)
  *
  * Baseado no programa de demonstracao de analise nodal modificada compacta
  * do professor Antonio Carlos M. de Queiroz.
  *
  * Universidade Federal do Rio de Janeiro - UFRJ
- * Circuitos Eletricos II - 2018.2
+ * Circuitos Eletricos II - 2018.1
  * Professor: Antonio Carlos M. de Queiroz (acmq@coe.ufrj.br)
  *
+ * Versao 1.0:
+ *   - Diversos bugs consertados. Programa funcional.
+ *
+ * Versao 0.6:
+ *   - Implementado o transistor PNP.
+ *   - Implementado um c�digo adicional que diminui a tolerancia do erro e/ou
+ *     randomiza alguns valores caso o sistema seja singular.
+ *   - Consertado um bug que nao zerava o contador de iteracoes a cada ponto.
+ *
+ * Versao 0.5:
+ *   - Implementadas as iteracoes pelo metodo de Newton-Raphson.
+ *   - Implementado o diodo e o transistor NPN.
+ *   - Incluido tempo de calculo.
+ *
+ * Versao 0.3:
+ *   - Implementados os elementos reativos (C e L) pelo metodo theta.
+ *   - Algumas correcoes de bugs.
+ *
+ * Versao 0.2:
+ *   - Implementada a analise no tempo e calculo do ponto de operacao.
+ *   - Implementadas as fontes variantes no tempo SIN e PULSE.
+ *
+ * Versao 0.1:
+ *   - Implementada a analise DC a partir do codigo base.
+ *   - Implementado o transformador ideal.
  */
 
 
@@ -28,14 +51,8 @@
  * Amp. de Corrente:     F<nome> <noI+> <noI-> <noi+> <noi-> <Ai>
  * Transcondutor:        G<nome> <noI+> <noI-> <nov+> <nov-> <Gm>
  * Transresistor:        H<nome> <noV+> <noV-> <noi+> <noi-> <Rm>
- * AND:                  )<nome> <nóentrada> <nóentrada> <nósaída>  <V> <R> <C> <A>.
- * NAND:                 (<nome> <nóentrada> <nóentrada> <nósaída> <nóentrada> <nóentrada> <nósaída>
- * OR:                   }<nome> <nóentrada> <nóentrada> <nósaída> <nóentrada> <nóentrada> <nósaída>
- * NOR:                  {<nome> <nóentrada> <nóentrada> <nósaída> <nóentrada> <nóentrada> <nósaída>
- * Flip-Flop:            %<nome> <nóQ+> <nóQ-> <nóD> <nóCk> [<Reset>]  <V> <R> <C>
- * Monoestável:          @<nome> <nóQ+> <nóQ-> <nóTrigger> <nóReset> <V> <R> <C> <T>
- * Reset:                !<nome> <nóSet> <nóReset> <Parâmetros>
- * Comentário:           *<comentário>
+ * Diodo:                D<nome> <no+> <no-> <Is> <nVt>
+ * Transistor bipolar:   Q<nome> <noc> <nob> <noe> <tipo> <a> <ar> <Isbe> <nVtbe> <Isbc> <nVtbc>
  *
  */
 
@@ -44,7 +61,8 @@
 #define _CRT_SECURE_NO_WARNINGS   // Impede que o VS reclame de algumas funcoes
 #endif
 
-#define versao "1.0"
+#define versao "1.0 - 06/2018"
+
 #include <stdio.h>
 #include <conio.h>
 #include <ctype.h>
@@ -70,13 +88,14 @@
 #define TOLG_NR             1e-6          // Tolerancia de erro no NR
 #define E_MIN                1.0          // Valor minimo entre calculo de erro absoluto ou relativo
 
-#define THETA_MIN           1e-6          // Valor minimo pra theta
-#define T_PADRAO            1e-3          // Tempo padrao de simulacao
-#define PASSO_PADRAO        1e-5          // Passo padrao
+#define THETA_PADRAO        0.55          // Valor padrao pra theta
+#define THETA_MIN           0.55          // Valor minimo pra theta
+#define T_PADRAO            0.001          // Tempo padrao de simulacao
+#define PASSO_PADRAO        0.00001          // Passo padrao
 #define P_INT_PADRAO           1          // Quantidade padrao de passos internos
 #define PI              acos(-1)
 
-#define DEBUG
+//#define DEBUG
 
 
 typedef struct elemento {    // Elemento do netlist
@@ -91,10 +110,6 @@ typedef struct elemento {    // Elemento do netlist
 
   float Isbe, nVtbe, Isbc, nVtbc; // Para o diodo, usamos somente Isbe e nVtbe
   float alpha, alpha_r;
-  
-  float vOutMax, rOut, cIn, A; // para portas lógicas
-  
-  
 } elemento;
 
 typedef int tabela[MAX_NOS + 1];
@@ -127,8 +142,7 @@ tipo,
 na[MAX_NOME], nb[MAX_NOME], nc[MAX_NOME], nd[MAX_NOME],
 lista[MAX_NOS + 1][MAX_NOME + 2],
 txt[MAX_LINHA + 1],
-*param,
-anaTipo[MAX_NOME];
+*param;
 
 FILE *arquivo, *valores;    // Arquivos com o netlist e t0
 
@@ -136,6 +150,7 @@ float
 Yn[MAX_NOS + 1][MAX_NOS + 2],    // Matriz a ser resolvida
 tempo = T_PADRAO,                // Tempo de simulacao
 passo = PASSO_PADRAO,            // Tamanho do passo
+theta = THETA_PADRAO,            // Valor de theta
 t0[MAX_NOS + 1],                 // Resultado em t0 para calcular t0 + /\t
 en[MAX_NOS + 1],                 // Resultado anterior de NR
 inicio, fim,
@@ -182,15 +197,9 @@ resolverSistema(void) {
         }
     }
   }
-  
-//  for(int i=0; i < 4; i++) {
-//	printf("\r\n");
-//	for(int j=0; j<4; j++)
-//		printf("%f  ",Yn[i][j]);
-//  }
-//  printf("\r\n");
   return 0;
 }
+
 
 /* Rotina que zera/inicializa o sistema. */
 void
@@ -200,6 +209,7 @@ zerarSistema(void) {
       Yn[u][q] = 0;
   }
 }
+
 
 /* Rotina que conta os nos e atribui numeros a eles. */
 int
@@ -261,7 +271,6 @@ lerNetlist(void) {
   printf("Titulo: %s", txt);
 
   while (fgets(txt, MAX_LINHA, arquivo)) {
-
     ne++; // Nao usa o netlist[0]
     if (ne > MAX_ELEM) {
       printf("(!) ERRO: O programa so aceita ate %d elementos.\r\n", MAX_ELEM);
@@ -313,18 +322,6 @@ lerNetlist(void) {
       netlist[ne].b = numeroNo(nb);
       netlist[ne].a = numeroNo(na);
     }
-	
-	else if (tipo == '(' || tipo == ')' || tipo == '{' || tipo == '}') { //float vOutMax, rOut, cIn, A; 
-      sscanf(param, "%10s %10s %10s %f %f %f %f", na, nb, nc, &netlist[ne].vOutMax, &netlist[ne].rOut,
-        &netlist[ne].cIn, &netlist[ne].A);
-
-      printf("%s %s %s %s %f %f %f %f\r\n", netlist[ne].nome, nc, nb, na, netlist[ne].vOutMax, netlist[ne].rOut, netlist[ne].cIn, netlist[ne].A);
-		
-      netlist[ne].c = numeroNo(nc);
-      netlist[ne].b = numeroNo(nb);
-      netlist[ne].a = numeroNo(na);
-    }
-	
     else if (tipo == 'I' || tipo == 'V') {
       sscanf(param, "%10s %10s %10s", na, nb, &netlist[ne].id);
       param = param + strlen(na) + strlen(nb) + strlen(netlist[ne].id) + 4;
@@ -367,27 +364,21 @@ lerNetlist(void) {
       ne--;
     }
     else if (tipo == '.') {
-     //memmove(param, param+1, strlen(param));
-	  //printf("%s\n", param);
-      sscanf(param, "%f %f %s %i", &tempo, &passo, &anaTipo, &passosInt);
-	  int j=0;
-	  for(int i=0; anaTipo[i]!='\0'; i++){
-		 //printf("entrou %i, anaTipo: %c",i, anaTipo[i]);
-	  	if(anaTipo[i]!=' ')
-	  		anaTipo[j++] = anaTipo[i];
-	  }	 
-		anaTipo[j]='\0';
-	
-	  printf("Tempo:%f , Passo: %f, Tipo: '%s' Passos internos: %i \n", tempo, passo, anaTipo, passosInt);
-	  printf("%i",strcmp(anaTipo,"BE"));
-	  if (strcmp(anaTipo,"BE")) {
-		printf("Analise nao permitida\r\nPressione qualquer tecla para sair..."); 
-		getchar();
-		fclose(arquivo);
-		exit(1);
-	  }
-		
-	  printf("Tempo:%f , Passo: %f, Tipo: %s, Passos internos: %i \n", tempo, passo, anaTipo, passosInt);
+      sscanf(param, "%f %f %*s %f %i", &tempo, &passo, &theta, &passosInt);
+	  //printf( "#-DEGUB: %f %f %*s %f %d\r\n", tempo, passo, theta, passosInt);
+	  tempo = 1;
+	  passo	= 1e-4;
+	  theta= 0.55;
+	  passosInt = 1;
+      if (theta > 1) {
+        printf("(!) ERRO: Parametro theta especificado maior que 1.\r\n");
+        printf("Pressione qualquer tecla para sair...");
+        getchar();
+        fclose(arquivo);
+        exit(1);
+      }
+      else if (theta < THETA_MIN)
+        theta = THETA_MIN;
       customTran = 1;
       ne--;
     }
@@ -402,10 +393,16 @@ lerNetlist(void) {
   fclose(arquivo);
 
   if (!customTran)
-    printf("/!\\ Aviso: nao foram passados valores para a analise no tempo. Serao usados os valores padrao.\r\n");
-  printf("Tempo de simulacao: %f s\r\n", tempo);
-  printf("Tamanho de Passo: %f s\r\n", passo);
-  printf("Passos internos: %i\r\n", passosInt);
+	tempo = T_PADRAO;                // Tempo de simulacao
+	passo = PASSO_PADRAO;            // Tamanho do passo
+	theta = THETA_PADRAO;            // Valor de theta
+	passosInt = P_INT_PADRAO;
+    
+  printf("/!\\ Aviso: nao foram passados valores para a analise no tempo. Serao usados os valores padrao.\r\n");
+  printf("Tempo de simulacao: %lf s\r\n", tempo);
+  printf("Tamanho de Passo: %lf s\r\n", passo);
+  printf("Teta: %lf\r\n", theta);
+  printf("Passos internos: %lf\r\n", passosInt);
   getchar();
 }
 
@@ -442,9 +439,9 @@ somar(int *Q, int a, int b) {
 
 /* Elementos do programa. */
 void
-operacional( int na, int nb, int nc, int nd) {
+operacional(int na, int nb, int nc, int nd) {
 #ifdef DEBUG
-  printf(" Saida: %d %d; entrada %d %d\r\n",na, nb, nc, nd);
+  printf("Saida: %d %d; entrada %d %d\r\n", na, nb, nc, nd);
 #endif
   somar(L, na, nb);
   somar(C, nc, nd);
@@ -466,7 +463,6 @@ condutancia(float g, int a, int b) {
 /* Rotina que corrige o tempo de subida e descida de fontes do tipo PULSE. */
 void
 correcaoPulse(void) {
-	 printf("correcaoPulse - elementosModificada neq:%i\r\n ",neq);
   for (u = 1; u <= ne; u++) {
     if (!strcmp(netlist[ne].id, "PULSE")) {
       if (netlist[ne].subida < passo)
@@ -475,7 +471,6 @@ correcaoPulse(void) {
         netlist[ne].descida = passo;
     }
   }
-  printf("correcaoPulse final - elementosModificada neq:%i\r\n ",neq);
 }
 
 /* Funcao que cacula o valor de uma fonte de tensao/corrente no tempo passo*ponto. */
@@ -569,8 +564,8 @@ transformador(float n, int a, int b, int c, int d, int x) {
 
 void
 capacitor(float c, int a, int b, float j) {
-  condutancia(c / (passo), a, b);
-  corrente(c * (t0[a] - t0[b]) / (passo) , b, a);
+  condutancia(c / (theta * passo), a, b);
+  corrente(c * (t0[a] - t0[b]) / (theta * passo) + ((1 - theta) * j / theta), b, a);
 }
 
 void
@@ -580,8 +575,8 @@ indutor(float l, int a, int b, int x) {
     Yn[L[b]][C[x]] -= 1;
     Yn[L[x]][C[a]] -= 1;
     Yn[L[x]][C[b]] += 1;
-    Yn[L[x]][C[x]] += l / ( passo);
-    Yn[L[x]][neq + 1] += (t0[x] * l / (passo));
+    Yn[L[x]][C[x]] += l / (theta * passo);
+    Yn[L[x]][neq + 1] += (((1 - theta) / theta) * (t0[a] - t0[b])) + (t0[x] * l / (theta * passo));
   }
   else {
     Yn[L[a]][C[x]] += 1;
@@ -661,304 +656,13 @@ transistor(float Isbe, float nVtbe, float Isbc, float nVtbc, float al, float al_
 }
 
 
-void
-portaNand ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
-	float Vx, Vo, A1,A2;
-	
-	//printf("en[a]: %f \r\n",en[a]);
-	//printf("en[b]: %f \r\n",en[b]);
-	//printf("en[c]: %f \r\n",en[b]);
-	
-	if(en[a] > en[b]) {
-		
-		Vx = V/2 - A*(en[b] - (V/2));
-		//printf("Aqui1: Vx: %f V: %f A: %f\r\n",Vx, V, A);
-		if(Vx > V) {
-			Vo = V;
-			A1 = 0;
-			A2 =0;
-		} else {
-			if ( Vx < 0) {
-				Vo =0;
-				A1=0;
-				A2=0;
-			} else {
-				Vo = V/2 * (1 + A);
-				A1=0;
-				A2= -A;
-			}
-		}
-		
-	} else {
-		
-		Vx = V/2 - A*(en[a] - (V/2));
-		//printf("Aqui2: Vx: %f V: %f A:  %f\r\n",Vx, V, A);
-		if(Vx > V) {
-			//printf("2.1\r\n");
-			Vo = V;
-			A1 = 0;
-			A2 =0;
-		} else {
-			if ( Vx < 0) {
-				//printf("2.2\r\n");
-				Vo =0;
-				A1=0;
-				A2=0;
-			} else {
-				//printf("2.3\r\n");
-				Vo = V/2 * (1 + A);
-				A1=-A;
-				A2= 0;
-			}
-		}
-	}
-	
-	//printf("ea:%f eb:%f A1:%f A2:%f Vo:%f Ro: %f\r\n",en[a],en[b],A1,A2,Vo, rOut);
-	
-	//Modelo Linearizado
-	//resistor
-	
-	
-	condutancia(1/rOut,0, c);
-	////I
-	corrente(Vo/rOut, 0, c);
-	//////G1
-	transcondutancia(A1/rOut, 0, c, a, 0);
-	////////G2
-	transcondutancia(A2/rOut, 0, c, b, 0);
-	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
-	
-	//capacitor(cIn, 0, b, 0 );
-}
-
-
-
-void
-portaAnd ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
-	float Vx, Vo, A1,A2;
-	
-	A = -A; //Modificação nand para and
-	
-	//printf("en[a]: %f \r\n",en[a]);
-	//printf("en[b]: %f \r\n",en[b]);
-	//printf("en[c]: %f \r\n",en[b]);
-	
-	if(en[a] > en[b]) {
-		
-		Vx = V/2 - A*(en[b] - (V/2));
-		//printf("Aqui1: Vx: %f V: %f A: %f\r\n",Vx, V, A);
-		if(Vx > V) {
-			Vo = V;
-			A1 = 0;
-			A2 =0;
-		} else {
-			if ( Vx < 0) {
-				Vo =0;
-				A1=0;
-				A2=0;
-			} else {
-				Vo = V/2 * (1 + A);
-				A1=0;
-				A2= -A;
-			}
-		}
-		
-	} else {
-		
-		Vx = V/2 - A*(en[a] - (V/2));
-		//printf("Aqui2: Vx: %f V: %f A:  %f\r\n",Vx, V, A);
-		if(Vx > V) {
-			//printf("2.1\r\n");
-			Vo = V;
-			A1 = 0;
-			A2 =0;
-		} else {
-			if ( Vx < 0) {
-				//printf("2.2\r\n");
-				Vo =0;
-				A1=0;
-				A2=0;
-			} else {
-				//printf("2.3\r\n");
-				Vo = V/2 * (1 + A);
-				A1=-A;
-				A2= 0;
-			}
-		}
-	}
-	
-	//printf("ea:%f eb:%f A1:%f A2:%f Vo:%f Ro: %f\r\n",en[a],en[b],A1,A2,Vo, rOut);
-	
-	//Modelo Linearizado
-	//resistor
-	
-	
-	condutancia(1/rOut,0, c);
-	////I
-	corrente(Vo/rOut, 0, c);
-	//////G1
-	transcondutancia(A1/rOut, 0, c, a, 0);
-	////////G2
-	transcondutancia(A2/rOut, 0, c, b, 0);
-	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
-	
-	//capacitor(cIn, 0, b, 0 );
-}
-
-void
-portaOr ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
-	float Vx, Vo, A1,A2;
-	
-	A = -A; //Modificação nand para and
-	
-	//printf("en[a]: %f \r\n",en[a]);
-	//printf("en[b]: %f \r\n",en[b]);
-	//printf("en[c]: %f \r\n",en[b]);
-	
-	if(en[a] < en[b]) {
-		
-		Vx = V/2 - A*(en[b] - (V/2));
-		//printf("Aqui1: Vx: %f V: %f A: %f\r\n",Vx, V, A);
-		if(Vx > V) {
-			Vo = V;
-			A1 = 0;
-			A2 =0;
-		} else {
-			if ( Vx < 0) {
-				Vo =0;
-				A1=0;
-				A2=0;
-			} else {
-				Vo = V/2 * (1 + A);
-				A1=0;
-				A2= -A;
-			}
-		}
-		
-	} else {
-		
-		Vx = V/2 - A*(en[a] - (V/2));
-		//printf("Aqui2: Vx: %f V: %f A:  %f\r\n",Vx, V, A);
-		if(Vx > V) {
-			//printf("2.1\r\n");
-			Vo = V;
-			A1 = 0;
-			A2 =0;
-		} else {
-			if ( Vx < 0) {
-				//printf("2.2\r\n");
-				Vo =0;
-				A1=0;
-				A2=0;
-			} else {
-				//printf("2.3\r\n");
-				Vo = V/2 * (1 + A);
-				A1=-A;
-				A2= 0;
-			}
-		}
-	}
-	
-	//printf("ea:%f eb:%f A1:%f A2:%f Vo:%f Ro: %f\r\n",en[a],en[b],A1,A2,Vo, rOut);
-	
-	//Modelo Linearizado
-	//resistor
-	
-	
-	condutancia(1/rOut,0, c);
-	////I
-	corrente(Vo/rOut, 0, c);
-	//////G1
-	transcondutancia(A1/rOut, 0, c, a, 0);
-	////////G2
-	transcondutancia(A2/rOut, 0, c, b, 0);
-	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
-	
-	//capacitor(cIn, 0, b, 0 );
-}
-
-void
-portaNor ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
-	float Vx, Vo, A1,A2;
-	
-	
-	//printf("en[a]: %f \r\n",en[a]);
-	//printf("en[b]: %f \r\n",en[b]);
-	//printf("en[c]: %f \r\n",en[b]);
-	
-	if(en[a] < en[b]) {
-		
-		Vx = V/2 - A*(en[b] - (V/2));
-		//printf("Aqui1: Vx: %f V: %f A: %f\r\n",Vx, V, A);
-		if(Vx > V) {
-			Vo = V;
-			A1 = 0;
-			A2 =0;
-		} else {
-			if ( Vx < 0) {
-				Vo =0;
-				A1=0;
-				A2=0;
-			} else {
-				Vo = V/2 * (1 + A);
-				A1=0;
-				A2= -A;
-			}
-		}
-		
-	} else {
-		
-		Vx = V/2 - A*(en[a] - (V/2));
-		//printf("Aqui2: Vx: %f V: %f A:  %f\r\n",Vx, V, A);
-		if(Vx > V) {
-			//printf("2.1\r\n");
-			Vo = V;
-			A1 = 0;
-			A2 =0;
-		} else {
-			if ( Vx < 0) {
-				//printf("2.2\r\n");
-				Vo =0;
-				A1=0;
-				A2=0;
-			} else {
-				//printf("2.3\r\n");
-				Vo = V/2 * (1 + A);
-				A1=-A;
-				A2= 0;
-			}
-		}
-	}
-	
-	//printf("ea:%f eb:%f A1:%f A2:%f Vo:%f Ro: %f\r\n",en[a],en[b],A1,A2,Vo, rOut);
-	
-	//Modelo Linearizado
-	//resistor
-	
-	
-	condutancia(1/rOut,0, c);
-	////I
-	corrente(Vo/rOut, 0, c);
-	//////G1
-	transcondutancia(A1/rOut, 0, c, a, 0);
-	////////G2
-	transcondutancia(A2/rOut, 0, c, b, 0);
-	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
-	
-	//capacitor(cIn, 0, b, 0 );
-}
-
 /* Essa rotina conta os elementos nao aceitos pela analise nodal simples,
  * simplificando com amp. ops. ou nao, dependendo do elemento. */
 void
 elementosModificada(void) {
   nn = nv;
   neq = nn;
-	printf("elementosModificada, neq: '%i'\r\n", neq);
+
   for (u = 1; u <= ne; u++) {
     tipo = netlist[u].nome[0];
     if (tipo == 'V' || tipo == 'E') {
@@ -987,14 +691,12 @@ elementosModificada(void) {
       operacional(netlist[u].x, 0, netlist[u].c, netlist[u].d);
     }
     else if (tipo == 'O') {
-      operacional( netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d);
+      operacional(netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d);
       neq--;
-	  printf("elementosModificada neq:%i\r\n ",neq);
     }
     else if (tipo == 'K') {
       nv++;
       neq++; // Como queremos calcular a corrente, nao usamos ampops
-	   printf("elementosModificada neq:%i\r\n ",neq);
       testarNos();
       strcpy(lista[nv], "j");
       strcat(lista[nv], netlist[u].nome);
@@ -1003,7 +705,6 @@ elementosModificada(void) {
     else if (tipo == 'L') {
       nv++;
       neq++;
-	   printf("elementosModificada neq:%i\r\n ",neq);
       testarNos();
       strcpy(lista[nv], "j");
       strcat(lista[nv], netlist[u].nome);
@@ -1020,7 +721,7 @@ listarTudo(void) {
   for (u = 0; u <= nv; u++)
     printf("%d -> %s (%d)\r\n", u, lista[u], C[u]);
   getchar();
- printf("elementosModificada neq:%i\r\n ",neq);
+
   printf("Netlist interno final\r\n");
   for (u = 1; u <= ne; u++) {
     tipo = netlist[u].nome[0];
@@ -1036,7 +737,7 @@ listarTudo(void) {
         netlist[u].c, netlist[u].d);
     }
 
-    if (tipo == 'V' || tipo == 'E' || tipo == 'F' || tipo == 'O' || tipo == 'K' || tipo == 'L' )
+    if (tipo == 'V' || tipo == 'E' || tipo == 'F' || tipo == 'O' || tipo == 'K' || tipo == 'L')
       printf("Corrente jx: %d\r\n", netlist[u].x);
     else if (tipo == 'H')
       printf("Correntes jx e jy: %d, %d\r\n", netlist[u].x, netlist[u].y);
@@ -1060,8 +761,8 @@ memoriaCapacitor(void) {
         if (C[netlist[s].b] == 0) e_b = 0.0;
         else e_b = Yn[C[netlist[s].b]][neq + 1];
 
-        netlist[s].j_t0 = (netlist[s].valor / (passo)) * ((e_a - e_b)
-          - (t0[netlist[s].a] - t0[netlist[s].b]));
+        netlist[s].j_t0 = (netlist[s].valor / (passo * theta)) * ((e_a - e_b)
+          - (t0[netlist[s].a] - t0[netlist[s].b])) - (((1 - theta) / theta) * netlist[s].j_t0);
       }
     }
   }
@@ -1084,7 +785,7 @@ checarConvergencia(void) {
 
 #ifdef DEBUG
       printf("Variavel %d, iteracao %d. Convergencia alcancada? %d\r\n", r, nroIteracoes + 1, convergiu);
-      printf("Valor anterior: %f; Valor atual: %f\r\n", en[r], Yn[C[r]][neq + 1]);
+      printf("Valor anterior: %f; Valor atual: %Lf\r\n", en[r], Yn[C[r]][neq + 1]);
       getchar();
 #endif
 
@@ -1155,18 +856,6 @@ montarEstampas(void) {
       transistor(netlist[u].Isbe, netlist[u].nVtbe, netlist[u].Isbc, netlist[u].nVtbc, netlist[u].alpha,
         netlist[u].alpha_r, netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].id);
       break;
-    case '(':
-      portaNand(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
-      break;
-    case ')':
-      portaAnd(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
-      break;
-    case '{':
-      portaNor(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
-      break;
-    case '}':
-      portaOr(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
-      break;
     case 'O':
       break;
     }
@@ -1176,15 +865,9 @@ montarEstampas(void) {
 
 int
 main() {
-  tempo = T_PADRAO;                // Tempo de simulacao
-  passo = PASSO_PADRAO;            // Tamanho do passo
-  passosInt = P_INT_PADRAO;
- 
   system("cls");
-  //printf("########%f # %f # %f # %d\n", tempo, passo, theta, passosInt);
- 
   printf("Programa de Analise Nodal Modificada Compacta no Tempo (Versao %s)\r\n", versao);
-  printf("Por Ewerton V., Matheus G., Gabriel L., Antônio G. \r\n");
+  printf("Por Ewerton Vasconcelos\r\n");
   printf("Codigo base por Antonio Carlos M. de Queiroz\r\n");
   srand((unsigned int)time(NULL));
 
@@ -1197,16 +880,19 @@ main() {
   lerNetlist(); // Chamada da rotina que le o netlist
   elementosModificada(); // Processamento de elementos da analise modificada
   listarTudo(); // Listagem de variaveis e elementos
-
+  //printf("########## %Lf  ######### %Lf", passosInt, passo);
   passo = passo / passosInt;
   qtdePontos = (int)round(tempo / passo);
+#ifdef DEBUG 
+  printf("Passo: %d, Passos Internos:%d qtdPontos: %d \r\n", passo, passosInt, qtdePontos);
+#endif
   correcaoPulse();
- printf("antes string - elementosModificada neq:%i\r\n ",neq);
+
   strcpy(nomeValores, nomeArquivo); // Cria o nome do arquivo de t0, <nomeArquivo>.tab
   char *pExtensao = strrchr(nomeValores, '.');
   strcpy(pExtensao, ".tab");
-  
-  printf("main - elementosModificada neq:%i\r\n ",neq);
+
+  // Inicio da analise
   printf("O circuito tem %i nos, %i variaveis internas, %i equacoes e %i elementos.\r\n", nn, nv, neq, ne);
   getchar();
 
@@ -1282,8 +968,6 @@ main() {
       checarConvergencia();
     } /* while ((!convergiu) && (nroRandomizacoes <= MAX_RAND)) */
 
-	
-	
       // Se o sistema nao convergir em um ponto, saimos do programa
     if ((!convergiu) && (nroRandomizacoes > MAX_RAND)) {
       printf("(!) ERRO: O sistema nao convergiu no ponto %d.\r\n", ponto);
@@ -1304,10 +988,10 @@ main() {
 
     // Escrevemos os resultados no arquivo
     if (ponto % passosInt == 0) {
-      fprintf(valores, "%.7f", ponto*passo);
+      fprintf(valores, "%.7Lg", ponto*passo);
       for (r = 1; r <= nv; r++) {
         if (C[r] || r <= nn)
-          fprintf(valores, " %.6f", t0[r]);
+          fprintf(valores, " %.6Lg", t0[r]);
         if (r == nv)
           fprintf(valores, "\n");
       }
@@ -1319,7 +1003,7 @@ main() {
   // Informamos a quantidade de pontos calculados e o tempo de analise
   printf("Pronto. %d pontos calculados internamente; %d foram incluidos na tabela.\r\n",
     ponto - 1, (ponto - 1) / passosInt);
-  printf("O programa demorou %.4f s para simular o circuito.\r\n", (float)(fim - inicio) / CLOCKS_PER_SEC);
+  printf("O programa demorou %.4Lg s para simular o circuito.\r\n", (float)(fim - inicio) / CLOCKS_PER_SEC);
   getchar();
   fclose(valores);
 
