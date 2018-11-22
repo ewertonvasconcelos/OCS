@@ -887,12 +887,13 @@ main() {
   printf("Passo: %d, Passos Internos:%d qtdPontos: %d \r\n", passo, passosInt, qtdePontos);
 #endif
   correcaoPulse();
-
+int newNeq = neq;
   strcpy(nomeValores, nomeArquivo); // Cria o nome do arquivo de t0, <nomeArquivo>.tab
   char *pExtensao = strrchr(nomeValores, '.');
   strcpy(pExtensao, ".tab");
 
   // Inicio da analise
+  neq=newNeq;
   printf("O circuito tem %i nos, %i variaveis internas, %i equacoes e %i elementos.\r\n", nn, nv, neq, ne);
   getchar();
 

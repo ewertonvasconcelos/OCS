@@ -50,7 +50,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+#include <cmath>
 #include <time.h>
 
 #define MAX_LINHA             80          // Comprimento maximo de uma linha do netlist
@@ -81,18 +81,18 @@
 
 typedef struct elemento {    // Elemento do netlist
   char nome[MAX_NOME];
-  float valor, j_t0; // Armazenamos a corrente do tempo anterior pra C
+  double valor, j_t0; // Armazenamos a corrente do tempo anterior pra C
   int a, b, c, d, x, y;
 
   char id[6]; // Pra identificar o tipo de Q e de fonte
   int ciclos;
-  float dc, ampl_1, freq, atraso, amort, phi;
-  float ampl_2, subida, descida, ligada, periodo; // Valores exclusivos a PULSE
+  double dc, ampl_1, freq, atraso, amort, phi;
+  double ampl_2, subida, descida, ligada, periodo; // Valores exclusivos a PULSE
 
-  float Isbe, nVtbe, Isbc, nVtbc; // Para o diodo, usamos somente Isbe e nVtbe
-  float alpha, alpha_r;
+  double Isbe, nVtbe, Isbc, nVtbc; // Para o diodo, usamos somente Isbe e nVtbe
+  double alpha, alpha_r;
   
-  float vOutMax, rOut, cIn, A; // para portas lógicas
+  double vOutMax, rOut, cIn, A; // para portas lógicas
   
   
 } elemento;
@@ -132,7 +132,8 @@ anaTipo[MAX_NOME];
 
 FILE *arquivo, *valores;    // Arquivos com o netlist e t0
 
-float
+
+double
 Yn[MAX_NOS + 1][MAX_NOS + 2],    // Matriz a ser resolvida
 tempo = T_PADRAO,                // Tempo de simulacao
 passo = PASSO_PADRAO,            // Tamanho do passo
@@ -147,7 +148,7 @@ tolg = TOLG_PADRAO;
 int
 resolverSistema(void) {
   int i, j, l, a;
-  float t, p;
+  double t, p;
 
   for (i = 1; i <= neq; i++) {
     t = 0.0;
@@ -277,13 +278,13 @@ lerNetlist(void) {
     param = txt + strlen(netlist[ne].nome);
 
     if (tipo == 'R' || tipo == 'L' || tipo == 'C') {
-      sscanf(param, "%10s %10s %f", na, nb, &netlist[ne].valor);
+      sscanf(param, "%10s %10s %lf", na, nb, &netlist[ne].valor);
       printf("%s %s %s %f\r\n", netlist[ne].nome, na, nb, netlist[ne].valor);
       netlist[ne].a = numeroNo(na);
       netlist[ne].b = numeroNo(nb);
     }
     else if (tipo == 'G' || tipo == 'E' || tipo == 'F' || tipo == 'H' || tipo == 'K') {
-      sscanf(param, "%10s %10s %10s %10s %f", na, nb, nc, nd, &netlist[ne].valor);
+      sscanf(param, "%10s %10s %10s %10s %lf", na, nb, nc, nd, &netlist[ne].valor);
       printf("%s %s %s %s %s %f\r\n", netlist[ne].nome, na, nb, nc, nd, netlist[ne].valor);
       netlist[ne].a = numeroNo(na);
       netlist[ne].b = numeroNo(nb);
@@ -299,13 +300,13 @@ lerNetlist(void) {
       netlist[ne].d = numeroNo(nd);
     }
     else if (tipo == 'D') {
-      sscanf(param, "%10s %10s %f %f", na, nb, &netlist[ne].Isbe, &netlist[ne].nVtbe);
+      sscanf(param, "%10s %10s %lf %lf", na, nb, &netlist[ne].Isbe, &netlist[ne].nVtbe);
       printf("%s %s %s %f %f\r\n", netlist[ne].nome, na, nb, netlist[ne].Isbe, netlist[ne].nVtbe);
       netlist[ne].a = numeroNo(na);
       netlist[ne].b = numeroNo(nb);
     }
     else if (tipo == 'Q') {
-      sscanf(param, "%10s %10s %10s %10s %f %f %f %f %f %f", nc, nb, na, &netlist[ne].id, &netlist[ne].alpha,
+      sscanf(param, "%10s %10s %10s %10s %lf %lf %lf %lf %lf %lf", nc, nb, na, &netlist[ne].id, &netlist[ne].alpha,
         &netlist[ne].alpha_r, &netlist[ne].Isbe, &netlist[ne].nVtbe, &netlist[ne].Isbc, &netlist[ne].nVtbc);
       printf("%s %s %s %s %s %f %f %f %f %f %f\r\n", netlist[ne].nome, nc, nb, na, netlist[ne].id, netlist[ne].alpha,
         netlist[ne].alpha_r, netlist[ne].Isbe, netlist[ne].nVtbe, netlist[ne].Isbc, netlist[ne].nVtbc);
@@ -314,8 +315,8 @@ lerNetlist(void) {
       netlist[ne].a = numeroNo(na);
     }
 	
-	else if (tipo == '(' || tipo == ')' || tipo == '{' || tipo == '}') { //float vOutMax, rOut, cIn, A; 
-      sscanf(param, "%10s %10s %10s %f %f %f %f", na, nb, nc, &netlist[ne].vOutMax, &netlist[ne].rOut,
+	else if (tipo == '(' || tipo == ')' || tipo == '{' || tipo == '}') { //double vOutMax, rOut, cIn, A; 
+      sscanf(param, "%10s %10s %10s %lf %lf %lf %lf", na, nb, nc, &netlist[ne].vOutMax, &netlist[ne].rOut,
         &netlist[ne].cIn, &netlist[ne].A);
 
       printf("%s %s %s %s %f %f %f %f\r\n", netlist[ne].nome, nc, nb, na, netlist[ne].vOutMax, netlist[ne].rOut, netlist[ne].cIn, netlist[ne].A);
@@ -335,7 +336,7 @@ lerNetlist(void) {
         netlist[ne].b = numeroNo(nb);
       }
       else if (!strcmp(netlist[ne].id, "SIN")) {
-        sscanf(param, "%f %f %f %f %f %f %lu", &netlist[ne].dc, &netlist[ne].ampl_1, &netlist[ne].freq,
+        sscanf(param, "%lf %lf %lf %lf %lf %lf %lu", &netlist[ne].dc, &netlist[ne].ampl_1, &netlist[ne].freq,
           &netlist[ne].atraso, &netlist[ne].amort, &netlist[ne].phi, &netlist[ne].ciclos);
         printf("%s %s %s %s %f %f %f %f %f %f %lu\r\n", netlist[ne].nome, na, nb, netlist[ne].id,
           netlist[ne].dc, netlist[ne].ampl_1, netlist[ne].freq, netlist[ne].atraso, netlist[ne].amort,
@@ -344,10 +345,11 @@ lerNetlist(void) {
         netlist[ne].b = numeroNo(nb);
       }
       else if (!strcmp(netlist[ne].id, "PULSE")) {
-        sscanf(param, "%f %f %f %f %f %f %f %lu", &netlist[ne].ampl_1, &netlist[ne].ampl_2,
-          &netlist[ne].atraso, &netlist[ne].subida, &netlist[ne].descida, &netlist[ne].ligada,
-          &netlist[ne].periodo, &netlist[ne].ciclos);
-        printf("%s %s %s %s %f %f %f %f %f %f %f %lu\r\n", netlist[ne].nome, na, nb,
+        sscanf(param, "%lf %lf %lf %lf %lf %lf %lf %lu", &netlist[ne].ampl_1, &netlist[ne].ampl_2, &netlist[ne].atraso, &netlist[ne].subida, &netlist[ne].descida, &netlist[ne].ligada, &netlist[ne].periodo, &netlist[ne].ciclos);
+		  
+		printf("ciclos:%lu, periodo:%.7e \r\n", netlist[ne].ciclos, netlist[ne].periodo);
+		
+        printf("%s %s %s %s %.7e %.7e %.7e %.7e %.7e %.7e %.7e %lu\r\n", netlist[ne].nome, na, nb,
           netlist[ne].id, netlist[ne].ampl_1, netlist[ne].ampl_2, netlist[ne].atraso, netlist[ne].subida,
           netlist[ne].descida, netlist[ne].ligada, netlist[ne].periodo, netlist[ne].ciclos);
 
@@ -359,7 +361,7 @@ lerNetlist(void) {
         printf("Pressione qualquer tecla para sair...");
         getchar();
         fclose(arquivo);
-        exit(1);
+		
       }
     }
     else if (tipo == '*') { // Comentario comeca com "*"
@@ -369,7 +371,7 @@ lerNetlist(void) {
     else if (tipo == '.') {
      //memmove(param, param+1, strlen(param));
 	  //printf("%s\n", param);
-      sscanf(param, "%f %f %s %i", &tempo, &passo, &anaTipo, &passosInt);
+      sscanf(param, "%lf %lf %s %i", &tempo, &passo, &anaTipo, &passosInt);
 	  int j=0;
 	  for(int i=0; anaTipo[i]!='\0'; i++){
 		 //printf("entrou %i, anaTipo: %c",i, anaTipo[i]);
@@ -387,7 +389,7 @@ lerNetlist(void) {
 		exit(1);
 	  }
 		
-	  printf("Tempo:%f , Passo: %f, Tipo: '%s' Passos internos: %i \r\n", tempo, passo, anaTipo, passosInt);
+	  printf("Tempo:%.7e , Passo: %.7e, Tipo: '%s' Passos internos: %i \r\n", tempo, passo, anaTipo, passosInt);
       customTran = 1;
       ne--;
     }
@@ -451,7 +453,7 @@ operacional( int na, int nb, int nc, int nd) {
 }
 
 void
-transcondutancia(float gm, int n1, int n2, int n3, int n4) {
+transcondutancia(double gm, int n1, int n2, int n3, int n4) {
   Yn[L[n1]][C[n3]] += gm;
   Yn[L[n2]][C[n4]] += gm;
   Yn[L[n1]][C[n4]] -= gm;
@@ -459,7 +461,7 @@ transcondutancia(float gm, int n1, int n2, int n3, int n4) {
 }
 
 void
-condutancia(float g, int a, int b) {
+condutancia(double g, int a, int b) {
   transcondutancia(g, a, b, a, b);
 }
 
@@ -477,10 +479,11 @@ correcaoPulse(void) {
 }
 
 /* Funcao que cacula o valor de uma fonte de tensao/corrente no tempo passo*ponto. */
-float
+double
 valorFonte(elemento componente) {
-  float val, t;
-
+	//printf("Passo:%.7e, Ponto:%i, ciclos:%lu, periodo:%.7e \r\n", passo, ponto, netlist[u].ciclos, netlist[u].periodo);
+  double val, t;
+  //printf("%c \r\n",componente.id[0] );
   switch (componente.id[0]) {
   case 'D':
     val = componente.valor;
@@ -499,8 +502,12 @@ valorFonte(elemento componente) {
     break;
 
   case 'P':
+	
     if (passo*ponto < componente.ciclos*componente.periodo) {
-      t = fmod(passo*ponto, componente.periodo); // Vemos em que momento de um ciclo a fonte esta
+	  double a = passo*ponto;
+	  double b = componente.periodo*10e9;
+      t = fmod(a,b); // Vemos em que momento de um ciclo a fonte esta
+	  t = t;
       if (t <= componente.atraso)
         val = componente.ampl_1;
       else if (t <= (componente.atraso + componente.subida))
@@ -516,6 +523,7 @@ valorFonte(elemento componente) {
     }
     else // Se os ciclos terminaram, a fonte fica na amplitude inicial
       val = componente.ampl_1;
+	  printf("Ponto: %i,Tempo: %.7e, Atraso: %.7e, Periodo: %.7e, Passo: %.7e => val: %.7e\r\n",ponto, t, componente.atraso,componente.periodo, passo, val);
     break;
   }
 
@@ -523,38 +531,38 @@ valorFonte(elemento componente) {
 }
 
 void
-corrente(float i, int a, int b) {
+corrente(double i, int a, int b) {
   Yn[L[a]][neq + 1] -= i;
   Yn[L[b]][neq + 1] += i;
 }
 
 void
-tensao(float v, int a, int b, int x) {
+tensao(double v, int a, int b, int x) {
   transcondutancia(1, 0, x, a, b);
   corrente(v, x, 0);
 }
 
 void
-ganhoTensao(float av, int a, int b, int c, int d, int x) {
+ganhoTensao(double av, int a, int b, int c, int d, int x) {
   transcondutancia(1, 0, x, a, b);
   transcondutancia(av, x, 0, c, d);
 }
 
 void
-ganhoCorrente(float ai, int a, int b, int c, int d, int x) {
+ganhoCorrente(double ai, int a, int b, int c, int d, int x) {
   transcondutancia(ai, a, b, x, 0);
   transcondutancia(1, c, d, x, 0);
 }
 
 void
-transresistencia(float rm, int a, int b, int c, int d, int x, int y) {
+transresistencia(double rm, int a, int b, int c, int d, int x, int y) {
   transcondutancia(1, 0, y, a, b);
   transcondutancia(rm, y, 0, x, 0);
   transcondutancia(1, c, d, x, 0);
 }
 
 void
-transformador(float n, int a, int b, int c, int d, int x) {
+transformador(double n, int a, int b, int c, int d, int x) {
   Yn[L[a]][C[x]] -= n;
   Yn[L[b]][C[x]] += n;
   Yn[L[c]][C[x]] += 1;
@@ -566,13 +574,13 @@ transformador(float n, int a, int b, int c, int d, int x) {
 }
 
 void
-capacitor(float c, int a, int b, float j) {
+capacitor(double c, int a, int b, double j) {
   condutancia(c / (passo), a, b);
   corrente(c * (t0[a] - t0[b]) / (passo) , b, a);
 }
 
 void
-indutor(float l, int a, int b, int x) {
+indutor(double l, int a, int b, int x) {
   if (ponto) {
     Yn[L[a]][C[x]] += 1;
     Yn[L[b]][C[x]] -= 1;
@@ -590,9 +598,9 @@ indutor(float l, int a, int b, int x) {
   }
 }
 
-float
-fonteDiodo(float Is, float nVt, int a, int b) {
-  float i0, v0;
+double
+fonteDiodo(double Is, double nVt, int a, int b) {
+  double i0, v0;
 
   if ((nroIteracoes == 0) && (ponto == 0)) v0 = 0.6;
   else v0 = en[a] - en[b];
@@ -606,9 +614,9 @@ fonteDiodo(float Is, float nVt, int a, int b) {
   return i0;
 }
 
-float
-condutanciaDiodo(float Is, float nVt, int a, int b) {
-  float g0, v0;
+double
+condutanciaDiodo(double Is, double nVt, int a, int b) {
+  double g0, v0;
 
   if ((nroIteracoes == 0) && (ponto == 0)) v0 = 0.6;
   else v0 = en[a] - en[b];
@@ -622,9 +630,9 @@ condutanciaDiodo(float Is, float nVt, int a, int b) {
 }
 
 void
-transistor(float Isbe, float nVtbe, float Isbc, float nVtbc, float al, float al_r,
+transistor(double Isbe, double nVtbe, double Isbc, double nVtbc, double al, double al_r,
   int c, int b, int e, char *id) {
-  float gc, ge, ic, ie;
+  double gc, ge, ic, ie;
 
   if (!strcmp(id, "NPN")) {
     ge = condutanciaDiodo(Isbe, nVtbe, b, e);
@@ -660,8 +668,8 @@ transistor(float Isbe, float nVtbe, float Isbc, float nVtbc, float al, float al_
 
 
 void
-portaNand ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
-	float Vx, Vo, A1,A2;
+portaNand ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
+	double Vx, Vo, A1,A2;
 	
 	//printf("en[a]: %f \r\n",en[a]);
 	//printf("en[b]: %f \r\n",en[b]);
@@ -733,8 +741,8 @@ portaNand ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
 
 
 void
-portaAnd ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
-	float Vx, Vo, A1,A2;
+portaAnd ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
+	double Vx, Vo, A1,A2;
 	
 	A = -A; //Modificação nand para and
 	
@@ -806,8 +814,8 @@ portaAnd ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
 }
 
 void
-portaOr ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
-	float Vx, Vo, A1,A2;
+portaOr ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
+	double Vx, Vo, A1,A2;
 	
 	A = -A; //Modificação nand para and
 	
@@ -879,8 +887,8 @@ portaOr ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
 }
 
 void
-portaNor ( int c, int b, int a, float V, float rOut, float cIn, float A ) {
-	float Vx, Vo, A1,A2;
+portaNor ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
+	double Vx, Vo, A1,A2;
 	
 	
 	//printf("en[a]: %f \r\n",en[a]);
@@ -1046,7 +1054,7 @@ listarTudo(void) {
 /* Rotina que calcula a corrente no capacitor para ser usada no proximo passo. */
 void
 memoriaCapacitor(void) {
-  float e_a, e_b;
+  double e_a, e_b;
 
   for (s = 1; s <= ne; s++) {
     if (netlist[s].nome[0] == 'C') {
@@ -1118,6 +1126,7 @@ montarEstampas(void) {
       corrente(valorFonte(netlist[u]), netlist[u].a, netlist[u].b);
       break;
     case 'V':
+	  
       tensao(valorFonte(netlist[u]), netlist[u].a, netlist[u].b, netlist[u].x);
       break;
     case 'E':
@@ -1179,10 +1188,9 @@ main() {
   passosInt = P_INT_PADRAO;
  
   system("cls");
-  //printf("########%f # %f # %f # %d\n", tempo, passo, theta, passosInt);
  
   printf("Programa de Analise Nodal Modificada Compacta no Tempo (Versao %s)\r\n", versao);
-  printf("Por Ewerton V., Matheus G., Gabriel L., Antônio G. \r\n");
+  printf("Por Ewerton V., Mateus G., Gabriel L., Antonio G. \r\n");
   printf("Codigo base por Antonio Carlos M. de Queiroz\r\n");
   srand((unsigned int)time(NULL));
 
@@ -1315,10 +1323,10 @@ main() {
 
     // Escrevemos os resultados no arquivo
     if (ponto % passosInt == 0) {
-      fprintf(valores, "%.7f", ponto*passo);
+      fprintf(valores, "%.7e", ponto*passo);
       for (r = 1; r <= nv; r++) {
         if (C[r] || r <= nn)
-          fprintf(valores, " %.6f", t0[r]);
+          fprintf(valores, " %.7e", t0[r]);
         if (r == nv)
           fprintf(valores, "\n");
       }
@@ -1330,7 +1338,7 @@ main() {
   // Informamos a quantidade de pontos calculados e o tempo de analise
   printf("Pronto. %d pontos calculados internamente; %d foram incluidos na tabela.\r\n",
     ponto - 1, (ponto - 1) / passosInt);
-  printf("O programa demorou %.4f s para simular o circuito.\r\n", (float)(fim - inicio) / CLOCKS_PER_SEC);
+  printf("O programa demorou %.4f s para simular o circuito.\r\n", (double)(fim - inicio) / CLOCKS_PER_SEC);
   getchar();
   fclose(valores);
 
