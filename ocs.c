@@ -76,7 +76,7 @@
 #define P_INT_PADRAO           1          // Quantidade padrao de passos internos
 #define PI              acos(-1)
 
-#define DEBUG
+//#define DEBUG
 
 
 typedef struct elemento {    // Elemento do netlist
@@ -378,8 +378,8 @@ lerNetlist(void) {
 	  }	 
 		anaTipo[j]='\0';
 	
-	  printf("Tempo:%f , Passo: %f, Tipo: '%s' Passos internos: %i \n", tempo, passo, anaTipo, passosInt);
-	  printf("%i",strcmp(anaTipo,"BE"));
+	  
+	  //printf("%i",strcmp(anaTipo,"BE"));
 	  if (strcmp(anaTipo,"BE")) {
 		printf("Analise nao permitida\r\nPressione qualquer tecla para sair..."); 
 		getchar();
@@ -387,7 +387,7 @@ lerNetlist(void) {
 		exit(1);
 	  }
 		
-	  printf("Tempo:%f , Passo: %f, Tipo: %s, Passos internos: %i \n", tempo, passo, anaTipo, passosInt);
+	  printf("Tempo:%f , Passo: %f, Tipo: '%s' Passos internos: %i \r\n", tempo, passo, anaTipo, passosInt);
       customTran = 1;
       ne--;
     }
@@ -466,7 +466,6 @@ condutancia(float g, int a, int b) {
 /* Rotina que corrige o tempo de subida e descida de fontes do tipo PULSE. */
 void
 correcaoPulse(void) {
-	 printf("correcaoPulse - elementosModificada neq:%i\r\n ",neq);
   for (u = 1; u <= ne; u++) {
     if (!strcmp(netlist[ne].id, "PULSE")) {
       if (netlist[ne].subida < passo)
@@ -475,7 +474,6 @@ correcaoPulse(void) {
         netlist[ne].descida = passo;
     }
   }
-  printf("correcaoPulse final - elementosModificada neq:%i\r\n ",neq);
 }
 
 /* Funcao que cacula o valor de uma fonte de tensao/corrente no tempo passo*ponto. */
@@ -958,7 +956,7 @@ void
 elementosModificada(void) {
   nn = nv;
   neq = nn;
-	printf("elementosModificada, neq: '%i'\r\n", neq);
+	
   for (u = 1; u <= ne; u++) {
     tipo = netlist[u].nome[0];
     if (tipo == 'V' || tipo == 'E') {
@@ -989,12 +987,12 @@ elementosModificada(void) {
     else if (tipo == 'O') {
       operacional( netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d);
       neq--;
-	  printf("elementosModificada neq:%i\r\n ",neq);
+	  //printf("elementosModificada neq:%i\r\n ",neq);
     }
     else if (tipo == 'K') {
       nv++;
       neq++; // Como queremos calcular a corrente, nao usamos ampops
-	   printf("elementosModificada neq:%i\r\n ",neq);
+	   //printf("elementosModificada neq:%i\r\n ",neq);
       testarNos();
       strcpy(lista[nv], "j");
       strcat(lista[nv], netlist[u].nome);
@@ -1003,7 +1001,7 @@ elementosModificada(void) {
     else if (tipo == 'L') {
       nv++;
       neq++;
-	   printf("elementosModificada neq:%i\r\n ",neq);
+	   //printf("elementosModificada neq:%i\r\n ",neq);
       testarNos();
       strcpy(lista[nv], "j");
       strcat(lista[nv], netlist[u].nome);
@@ -1020,7 +1018,7 @@ listarTudo(void) {
   for (u = 0; u <= nv; u++)
     printf("%d -> %s (%d)\r\n", u, lista[u], C[u]);
   getchar();
- printf("elementosModificada neq:%i\r\n ",neq);
+ //printf("elementosModificada neq:%i\r\n ",neq);
   printf("Netlist interno final\r\n");
   for (u = 1; u <= ne; u++) {
     tipo = netlist[u].nome[0];
@@ -1201,16 +1199,29 @@ main() {
   passo = passo / passosInt;
   qtdePontos = (int)round(tempo / passo);
   correcaoPulse();
- printf("antes string - elementosModificada neq:%i\r\n ",neq);
-  strcpy(nomeValores, nomeArquivo); // Cria o nome do arquivo de t0, <nomeArquivo>.tab
-  char *pExtensao = strrchr(nomeValores, '.');
-  strcpy(pExtensao, ".tab");
+
   
-  printf("main - elementosModificada neq:%i\r\n ",neq);
+ //######### PROBLEMA ############
+  int newNeq=neq;
+  char nome[20];
+  int j;
+  for(j=0; nomeArquivo[j]!='.'; j++) {
+	nomeValores[j] = nomeArquivo[j];
+  }
+   nomeValores[j++] = '.';
+   nomeValores[j++] = 't';
+   nomeValores[j++] = 'a';
+   nomeValores[j++] = 'b';
+   nomeValores[j++] = '\0';
+   strcpy(nome,nomeValores);
+   
+   //######### PROBLEMA ############
+   
+  neq = newNeq; 
   printf("O circuito tem %i nos, %i variaveis internas, %i equacoes e %i elementos.\r\n", nn, nv, neq, ne);
   getchar();
 
-  valores = fopen(nomeValores, "w");
+  valores = fopen(nome, "w");
 
   // Escreve as variaveis calculadas na primeira linha do .tab
   fprintf(valores, "t");
