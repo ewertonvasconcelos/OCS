@@ -50,7 +50,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cmath>
+#include <math.h>
 #include <time.h>
 
 #define MAX_LINHA             80          // Comprimento maximo de uma linha do netlist
@@ -108,7 +108,7 @@ elemento netlist[MAX_ELEM];
 int
 ne,                          // Elementos
 nv,                          // Variaveis
-neq,                         // Equacoes
+neq,newNeq,                  // Equacoes
 nn,                          // Nos
 ponto,                       // Ponto de calculo
 qtdePontos,                  // Quantidade de pontos
@@ -140,7 +140,8 @@ passo = PASSO_PADRAO,            // Tamanho do passo
 t0[MAX_NOS + 1],                 // Resultado em t0 para calcular t0 + /\t
 en[MAX_NOS + 1],                 // Resultado anterior de NR
 inicio, fim,
-tolg = TOLG_PADRAO;
+tolg = TOLG_PADRAO,
+pCiclo, tempoS;
 
 
 /* Resolucao de sistema de equacoes lineares.
@@ -503,21 +504,20 @@ valorFonte(elemento componente) {
     break;
 
   case 'P':
-    double pCiclo, tempo;
     if(componente.subida==0.0) {
 	componente.subida=passo/passosInt; }
     if(componente.descida==0.0) {
 	componente.descida=passo/passosInt; }
-	tempo = ponto*passo;
+	tempoS = ponto*passo;
     //caso o tempo seja maior que o atraso
-    if (tempo>componente.atraso)
+    if (tempoS>componente.atraso)
     {
         //caso seja maior que o atraso e o tempo total dividido pelo periodo seja menor que o numero
         //de ciclos ento entra
-        if (((tempo-componente.atraso)/(componente.periodo))<componente.ciclos)
+        if (((tempoS-componente.atraso)/(componente.periodo))<componente.ciclos)
         {
             //calcula o periodo do ciclo
-            pCiclo = fmod((tempo-componente.atraso),componente.periodo);
+            pCiclo = fmod((tempoS-componente.atraso),componente.periodo);
             // Caso tempo dentro do ciclo seja menor que o tempo de subida
             if (pCiclo<componente.subida)
                 return (((componente.ampl_2-componente.ampl_1)*(pCiclo/componente.subida))+componente.ampl_1);
@@ -741,9 +741,9 @@ portaNand ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	////////G2
 	transcondutancia(A2/rOut, 0, c, b, 0);
 	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
+	capacitor(cIn, 0, a, 0 );
 	
-	//capacitor(cIn, 0, b, 0 );
+	capacitor(cIn, 0, b, 0 );
 }
 
 
@@ -816,9 +816,9 @@ portaAnd ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	////////G2
 	transcondutancia(A2/rOut, 0, c, b, 0);
 	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
+	capacitor(cIn, 0, a, 0 );
 	
-	//capacitor(cIn, 0, b, 0 );
+	capacitor(cIn, 0, b, 0 );
 }
 
 void
@@ -889,9 +889,9 @@ portaOr ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	////////G2
 	transcondutancia(A2/rOut, 0, c, b, 0);
 	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
+	capacitor(cIn, 0, a, 0 );
 	
-	//capacitor(cIn, 0, b, 0 );
+	capacitor(cIn, 0, b, 0 );
 }
 
 void
@@ -961,9 +961,9 @@ portaNor ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	////////G2
 	transcondutancia(A2/rOut, 0, c, b, 0);
 	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
+	capacitor(cIn, 0, a, 0 );
 	
-	//capacitor(cIn, 0, b, 0 );
+	capacitor(cIn, 0, b, 0 );
 }
 
 /* Essa rotina conta os elementos nao aceitos pela analise nodal simples,
@@ -1218,7 +1218,7 @@ main() {
 
   
  //######### PROBLEMA ############
-  int newNeq=neq;
+  newNeq=neq;
   char nome[20];
   int j;
   for(j=0; nomeArquivo[j]!='.'; j++) {
