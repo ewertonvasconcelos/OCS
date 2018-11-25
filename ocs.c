@@ -305,7 +305,7 @@ lerNetlist(void) {
       netlist[ne].a = numeroNo(na);
       netlist[ne].b = numeroNo(nb);
     }
-    else if (tipo == 'Q') {
+ /*   else if (tipo == 'Q') {
       sscanf(param, "%10s %10s %10s %10s %lf %lf %lf %lf %lf %lf", nc, nb, na, &netlist[ne].id, &netlist[ne].alpha,
         &netlist[ne].alpha_r, &netlist[ne].Isbe, &netlist[ne].nVtbe, &netlist[ne].Isbc, &netlist[ne].nVtbc);
       printf("%s %s %s %s %s %f %f %f %f %f %f\r\n", netlist[ne].nome, nc, nb, na, netlist[ne].id, netlist[ne].alpha,
@@ -313,7 +313,7 @@ lerNetlist(void) {
       netlist[ne].c = numeroNo(nc);
       netlist[ne].b = numeroNo(nb);
       netlist[ne].a = numeroNo(na);
-    }
+    }*/
 	
 	else if (tipo == '(' || tipo == ')' || tipo == '{' || tipo == '}') { //double vOutMax, rOut, cIn, A; 
       sscanf(param, "%10s %10s %10s %lf %lf %lf %lf", na, nb, nc, &netlist[ne].vOutMax, &netlist[ne].rOut,
@@ -327,29 +327,30 @@ lerNetlist(void) {
     }
 	
     else if (tipo == 'I' || tipo == 'V') {
-      sscanf(param, "%10s %10s %10s", na, nb, &netlist[ne].id);
+      sscanf(param, "%10s %10s %10s", na, nb, netlist[ne].id);
       param = param + strlen(na) + strlen(nb) + strlen(netlist[ne].id) + 4;
+	  printf("#DEBUG - %s\r\n", netlist[ne].id);
       if (!strcmp(netlist[ne].id, "DC")) {
-        sscanf(param, "%f", &netlist[ne].valor);
+        sscanf(param, "%lf", &netlist[ne].valor);
         printf("%s %s %s %s %f\r\n", netlist[ne].nome, na, nb, netlist[ne].id, netlist[ne].valor);
         netlist[ne].a = numeroNo(na);
         netlist[ne].b = numeroNo(nb);
       }
       else if (!strcmp(netlist[ne].id, "SIN")) {
-        sscanf(param, "%lf %lf %lf %lf %lf %lf %lu", &netlist[ne].dc, &netlist[ne].ampl_1, &netlist[ne].freq,
+        sscanf(param, "%lf %lf %lf %lf %lf %lf %i", &netlist[ne].dc, &netlist[ne].ampl_1, &netlist[ne].freq,
           &netlist[ne].atraso, &netlist[ne].amort, &netlist[ne].phi, &netlist[ne].ciclos);
-        printf("%s %s %s %s %f %f %f %f %f %f %lu\r\n", netlist[ne].nome, na, nb, netlist[ne].id,
+        printf("%s %s %s %s %f %f %f %f %f %f %i\r\n", netlist[ne].nome, na, nb, netlist[ne].id,
           netlist[ne].dc, netlist[ne].ampl_1, netlist[ne].freq, netlist[ne].atraso, netlist[ne].amort,
           netlist[ne].phi, netlist[ne].ciclos);
         netlist[ne].a = numeroNo(na);
         netlist[ne].b = numeroNo(nb);
       }
       else if (!strcmp(netlist[ne].id, "PULSE")) {
-        sscanf(param, "%lf %lf %lf %lf %lf %lf %lf %lu", &netlist[ne].ampl_1, &netlist[ne].ampl_2, &netlist[ne].atraso, &netlist[ne].subida, &netlist[ne].descida, &netlist[ne].ligada, &netlist[ne].periodo, &netlist[ne].ciclos);
+        sscanf(param, "%lf %lf %lf %lf %lf %lf %lf %i", &netlist[ne].ampl_1, &netlist[ne].ampl_2, &netlist[ne].atraso, &netlist[ne].subida, &netlist[ne].descida, &netlist[ne].ligada, &netlist[ne].periodo, &netlist[ne].ciclos);
 		  
-		printf("ciclos:%lu, periodo:%.7e \r\n", netlist[ne].ciclos, netlist[ne].periodo);
+		/*printf("ciclos:%lu, periodo:%.7e \r\n", netlist[ne].ciclos, netlist[ne].periodo);*/
 		
-        printf("%s %s %s %s %.7e %.7e %.7e %.7e %.7e %.7e %.7e %lu\r\n", netlist[ne].nome, na, nb,
+        printf("%s %s %s %s %.7e %.7e %.7e %.7e %.7e %.7e %.7e %i\r\n", netlist[ne].nome, na, nb,
           netlist[ne].id, netlist[ne].ampl_1, netlist[ne].ampl_2, netlist[ne].atraso, netlist[ne].subida,
           netlist[ne].descida, netlist[ne].ligada, netlist[ne].periodo, netlist[ne].ciclos);
 
@@ -371,7 +372,7 @@ lerNetlist(void) {
     else if (tipo == '.') {
      //memmove(param, param+1, strlen(param));
 	  //printf("%s\n", param);
-      sscanf(param, "%lf %lf %s %i", &tempo, &passo, &anaTipo, &passosInt);
+      sscanf(param, "%lf %lf %s %i", &tempo, &passo, anaTipo, &passosInt);
 	  int j=0;
 	  for(int i=0; anaTipo[i]!='\0'; i++){
 		 //printf("entrou %i, anaTipo: %c",i, anaTipo[i]);
@@ -502,17 +503,17 @@ valorFonte(elemento componente) {
     break;
 
   case 'P':
-    double pCiclo;
-    if(componente.subida==0.0)
-        componente.subida=passo/passosInt;
-    if(componente.descida==0.0)
-        componente.descida=passo/passosInt;
+    double pCiclo, tempo;
+    if(componente.subida==0.0) {
+	componente.subida=passo/passosInt; }
+    if(componente.descida==0.0) {
+	componente.descida=passo/passosInt; }
 	tempo = ponto*passo;
     //caso o tempo seja maior que o atraso
     if (tempo>componente.atraso)
     {
         //caso seja maior que o atraso e o tempo total dividido pelo periodo seja menor que o numero
-        //de ciclos ent�o entra
+        //de ciclos ento entra
         if (((tempo-componente.atraso)/(componente.periodo))<componente.ciclos)
         {
             //calcula o periodo do ciclo
