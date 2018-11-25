@@ -55,8 +55,8 @@
 
 #define MAX_LINHA             80          // Comprimento maximo de uma linha do netlist
 #define MAX_NOME              11          // Comprimento maximo do nome de um elemento
-#define MAX_ELEM             200          // Numero maximo de elementos no circuito
-#define MAX_NOS              200          // Numero maximo de nos no circuito
+#define MAX_ELEM             300          // Numero maximo de elementos no circuito
+#define MAX_NOS              300          // Numero maximo de nos no circuito
 
 #define TOLG_PADRAO        1e-15          // Tolerancia pivotal inicial
 #define TOLG_MIN           1e-40          // Tolerancia pivotal minima
@@ -65,7 +65,7 @@
 #define D_VMAX               0.8          // Tensao no qual o diodo se torna linearizado
 #define NR_INICIAL           0.1          // Valores iniciais para o Newton-Raphson
 #define MAX_ITER             100          // Maximo de iteracoes do Newton-Raphson
-#define MAX_RAND              50          // Maximo de randomizacoes pro Newton-Raphson
+#define MAX_RAND             100          // Maximo de randomizacoes pro Newton-Raphson
 #define FAIXA_RAND           100          // Faixa de valores na randomizacao
 #define TOLG_NR             1e-6          // Tolerancia de erro no NR
 #define E_MIN                1.0          // Valor minimo entre calculo de erro absoluto ou relativo
@@ -82,9 +82,10 @@
 typedef struct elemento {    // Elemento do netlist
   char nome[MAX_NOME];
   double valor, j_t0; // Armazenamos a corrente do tempo anterior pra C
-  int a, b, c, d, x, y;
+  int a, b, c, d, x, y, x1,x2,x3,x4,x5;
 
   char id[6]; // Pra identificar o tipo de Q e de fonte
+  char resetName[10];
   int ciclos;
   double dc, ampl_1, freq, atraso, amort, phi;
   double ampl_2, subida, descida, ligada, periodo; // Valores exclusivos a PULSE
@@ -93,6 +94,8 @@ typedef struct elemento {    // Elemento do netlist
   double alpha, alpha_r;
   
   double vOutMax, rOut, cIn, A; // para portas lógicas
+  
+  
   
   
 } elemento;
@@ -320,8 +323,34 @@ lerNetlist(void) {
       sscanf(param, "%10s %10s %10s %lf %lf %lf %lf", na, nb, nc, &netlist[ne].vOutMax, &netlist[ne].rOut,
         &netlist[ne].cIn, &netlist[ne].A);
 
-      printf("%s %s %s %s %f %f %f %f\r\n", netlist[ne].nome, nc, nb, na, netlist[ne].vOutMax, netlist[ne].rOut, netlist[ne].cIn, netlist[ne].A);
+      printf("%s %s %s %s %.4e %.4e %.4e %.4e\r\n", netlist[ne].nome, nc, nb, na, netlist[ne].vOutMax, netlist[ne].rOut, netlist[ne].cIn, netlist[ne].A);
 		
+      netlist[ne].c = numeroNo(nc);
+      netlist[ne].b = numeroNo(nb);
+      netlist[ne].a = numeroNo(na);
+    }
+	
+	else if (tipo == '%') { //  %<nome> <nóQ+> <nóQ-> <nóD> <nóCk> [<Reset>] a b c
+	  
+	  int numeroDePalavras=0;
+	  for(int i =0; param[i]!= '\n' && param[i]!= '\r' && param[i]!='\0'; i++) {
+		// printf("param[i]: %c\r\n",param[i]);
+		if(param[i]==' ') 
+			numeroDePalavras++;
+	  }
+	  //printf("numeroDePalavras: %i\r\n",numeroDePalavras);
+	  if(numeroDePalavras == 8) {
+		sscanf(param, "%10s %10s %10s %10s %s %lf %lf %lf", na, nb, nc, nd, netlist[ne].resetName, &netlist[ne].vOutMax, &netlist[ne].rOut, &netlist[ne].cIn);
+		printf("nome:%s na:%s nb:%s nc:%s nd:%s reset:%s v:%.4e r:%.4e c:%.4e\r\n", netlist[ne].nome, na, nb, nc, nd, netlist[ne].resetName, netlist[ne].vOutMax, netlist[ne].rOut, netlist[ne].cIn);
+	  } else if (numeroDePalavras == 7) {
+		sscanf(param, "%10s %10s %10s %10s %lf %lf %lf", na, nb, nc, nd, &netlist[ne].vOutMax, &netlist[ne].rOut,
+        &netlist[ne].cIn);
+		printf("nome:%s na:%s nb:%s nc:%s nd:%s v:%.4e r:%.4e c:%.4e\r\n", netlist[ne].nome, na, nb, nc, nd, netlist[ne].vOutMax, netlist[ne].rOut, netlist[ne].cIn);
+	  } else {
+		 printf("Verifique o numero de parametros do Flip-Flop.") ;
+		 exit(1);
+	  }
+	  netlist[ne].d = numeroNo(nd);
       netlist[ne].c = numeroNo(nc);
       netlist[ne].b = numeroNo(nb);
       netlist[ne].a = numeroNo(na);
@@ -675,6 +704,7 @@ transistor(double Isbe, double nVtbe, double Isbc, double nVtbc, double al, doub
 }
 
 
+
 void
 portaNand ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	double Vx, Vo, A1,A2;
@@ -966,6 +996,22 @@ portaNor ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	//capacitor(cIn, 0, b, 0 );
 }
 
+void 
+flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V, double rOut, double cIn,int int1,int int2,int int3,int int4,int int5) {
+	
+	//printf("%i %i %i %i %i \r\n", int1, int2, int3, int4, int5);
+	
+	portaNand(int3,int1,int2,V, rOut, cIn, 20); //1
+	portaNand(int2,d,int3,V, rOut, cIn, 20); //2
+	portaNand(int4,int1,int5,V, rOut, cIn, 20); //3
+	portaNand(int1,int4,c,V, rOut, cIn, 20); //4
+	portaNand(a,int2,b,V, rOut, cIn, 20); //5
+	portaNand(b,int4,a,V, rOut, cIn, 20); //6
+	portaAnd(int5,d,int2,V, rOut, cIn, 20);
+	
+}
+
+
 /* Essa rotina conta os elementos nao aceitos pela analise nodal simples,
  * simplificando com amp. ops. ou nao, dependendo do elemento. */
 void
@@ -1022,7 +1068,44 @@ elementosModificada(void) {
       strcpy(lista[nv], "j");
       strcat(lista[nv], netlist[u].nome);
       netlist[u].x = nv;
-    }
+    } else if (tipo == '%') {
+
+		char noInterno1[10], noInterno2[10], noInterno3[10], noInterno4[10],noInterno5[10];
+		strcpy(noInterno1, netlist[u].nome);
+		strcpy(noInterno2, netlist[u].nome);
+		strcpy(noInterno3, netlist[u].nome);
+		strcpy(noInterno4, netlist[u].nome);
+		strcpy(noInterno5, netlist[u].nome);
+		
+		strcat(noInterno1,"1");
+		strcat(noInterno2,"2");
+		strcat(noInterno3,"3");
+		strcat(noInterno4,"4");
+		strcat(noInterno5,"5");
+		
+		printf("%s %s %s %s %s\r\n", noInterno1,noInterno2,noInterno3,noInterno4,noInterno5);
+		nv++;    
+		neq++;
+		netlist[u].x1 = nv;
+		strcpy(lista[nv], noInterno1);
+		nv++;
+		neq++;
+		netlist[u].x2 = nv;
+		strcpy(lista[nv], noInterno2);
+		nv++;
+		neq++;
+		netlist[u].x3 = nv;
+		strcpy(lista[nv], noInterno3);
+		nv++;
+		neq++;
+		netlist[u].x4 = nv;
+		strcpy(lista[nv], noInterno4);	
+		nv++;
+		neq++;
+		netlist[u].x5 = nv;
+		strcpy(lista[nv], noInterno5);	
+		
+	}
   }
 }
 
@@ -1198,6 +1281,9 @@ montarEstampas(void) {
 	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
        else capacitor(netlist[u].cIn, netlist[u].b, 0,0);
       break;
+    case '%':
+	 flipflopD(netlist[u].nome,netlist[u].a,netlist[u].b,netlist[u].c,netlist[u].d,netlist[u].resetName,netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn,netlist[u].x1,netlist[u].x2,netlist[u].x3,netlist[u].x4,netlist[u].x5);
+	break;
     case 'O':
       break;
     }
