@@ -741,9 +741,9 @@ portaNand ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	////////G2
 	transcondutancia(A2/rOut, 0, c, b, 0);
 	// capacitancia de entrada
-	capacitor(cIn, 0, a, 0 );
+	//capacitor(cIn, 0, a, 0 );
 	
-	capacitor(cIn, 0, b, 0 );
+	//capacitor(cIn, 0, b, 0 );
 }
 
 
@@ -816,9 +816,9 @@ portaAnd ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	////////G2
 	transcondutancia(A2/rOut, 0, c, b, 0);
 	// capacitancia de entrada
-	capacitor(cIn, 0, a, 0 );
+	//capacitor(cIn, 0, a, 0 );
 	
-	capacitor(cIn, 0, b, 0 );
+	//capacitor(cIn, 0, b, 0 );
 }
 
 void
@@ -889,9 +889,9 @@ portaOr ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	////////G2
 	transcondutancia(A2/rOut, 0, c, b, 0);
 	// capacitancia de entrada
-	capacitor(cIn, 0, a, 0 );
+	//capacitor(cIn, 0, a, 0 );
 	
-	capacitor(cIn, 0, b, 0 );
+	//capacitor(cIn, 0, b, 0 );
 }
 
 void
@@ -961,9 +961,9 @@ portaNor ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	////////G2
 	transcondutancia(A2/rOut, 0, c, b, 0);
 	// capacitancia de entrada
-	capacitor(cIn, 0, a, 0 );
+	//capacitor(cIn, 0, a, 0 );
 	
-	capacitor(cIn, 0, b, 0 );
+	//capacitor(cIn, 0, b, 0 );
 }
 
 /* Essa rotina conta os elementos nao aceitos pela analise nodal simples,
@@ -1172,15 +1172,31 @@ montarEstampas(void) {
       break;
     case '(':
       portaNand(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+       else capacitor(netlist[u].cIn, netlist[u].c, 0,0);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+       else capacitor(netlist[u].cIn, netlist[u].b, 0,0);
       break;
     case ')':
       portaAnd(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+       else capacitor(netlist[u].cIn, netlist[u].c, 0,0);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+       else capacitor(netlist[u].cIn, netlist[u].b, 0,0);
       break;
     case '{':
       portaNor(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+       else capacitor(netlist[u].cIn, netlist[u].c, 0,0);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+       else capacitor(netlist[u].cIn, netlist[u].b, 0,0);
       break;
     case '}':
       portaOr(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+       else capacitor(netlist[u].cIn, netlist[u].c, 0,0);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+       else capacitor(netlist[u].cIn, netlist[u].b, 0,0);
       break;
     case 'O':
       break;
