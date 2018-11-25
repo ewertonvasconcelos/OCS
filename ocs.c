@@ -482,7 +482,7 @@ correcaoPulse(void) {
 double
 valorFonte(elemento componente) {
 	//printf("Passo:%.7e, Ponto:%i, ciclos:%lu, periodo:%.7e \r\n", passo, ponto, netlist[u].ciclos, netlist[u].periodo);
-  double val, t;
+  double  val, t;
   //printf("%c \r\n",componente.id[0] );
   switch (componente.id[0]) {
   case 'D':
@@ -502,32 +502,39 @@ valorFonte(elemento componente) {
     break;
 
   case 'P':
-	
-    if (passo*ponto < componente.ciclos*componente.periodo) {
-	  double a = passo*ponto;
-	  double b = componente.periodo*10e9;
-      t = fmod(a,b); // Vemos em que momento de um ciclo a fonte esta
-	  t = t;
-      if (t <= componente.atraso)
-        val = componente.ampl_1;
-      else if (t <= (componente.atraso + componente.subida))
-        val = componente.ampl_1 + ((componente.ampl_2 - componente.ampl_1) / componente.subida)
-        * (t - componente.atraso);
-      else if (t <= (componente.atraso + componente.subida + componente.ligada))
-        val = componente.ampl_2;
-      else if (t <= (componente.atraso + componente.subida + componente.ligada + componente.descida))
-        val = componente.ampl_2 + ((componente.ampl_1 - componente.ampl_2) / componente.descida)
-        * (t - (componente.atraso + componente.subida + componente.ligada));
-      else
-        val = componente.ampl_1;
+    double pCiclo;
+    if(componente.subida==0.0)
+        componente.subida=passo/passosInt;
+    if(componente.descida==0.0)
+        componente.descida=passo/passosInt;
+	tempo = ponto*passo;
+    //caso o tempo seja maior que o atraso
+    if (tempo>componente.atraso)
+    {
+        //caso seja maior que o atraso e o tempo total dividido pelo periodo seja menor que o numero
+        //de ciclos ent�o entra
+        if (((tempo-componente.atraso)/(componente.periodo))<componente.ciclos)
+        {
+            //calcula o periodo do ciclo
+            pCiclo = fmod((tempo-componente.atraso),componente.periodo);
+            // Caso tempo dentro do ciclo seja menor que o tempo de subida
+            if (pCiclo<componente.subida)
+                return (((componente.ampl_2-componente.ampl_1)*(pCiclo/componente.subida))+componente.ampl_1);
+            //caso o tempo dentro do ciclo seja maior que o tempo de subida
+            if (pCiclo<=(componente.subida+componente.ligada))
+                return (componente.ampl_2);
+            //caso o tempo dentro do ciclose seja maior que o tempo de decida
+            if (pCiclo<(componente.subida+componente.ligada+componente.descida))
+                return (((componente.ampl_1-componente.ampl_2)*(pCiclo-componente.subida-componente.ligada)/(componente.descida))+componente.ampl_2);
+        }
     }
-    else // Se os ciclos terminaram, a fonte fica na amplitude inicial
-      val = componente.ampl_1;
-	  printf("Ponto: %i,Tempo: %.7e, Atraso: %.7e, Periodo: %.7e, Passo: %.7e => val: %.7e\r\n",ponto, t, componente.atraso,componente.periodo, passo, val);
-    break;
+    //caso ele n�o atenda nenhuma das tentativas acima devolver amplitude DC
+    return (componente.ampl_1);
+	break;
   }
-
+  
   return val;
+	
 }
 
 void
