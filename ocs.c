@@ -94,6 +94,8 @@ typedef struct elemento {    // Elemento do netlist
   double alpha, alpha_r;
   
   double vOutMax, rOut, cIn, A; // para portas lógicas
+  int clkMuda; // autoriza mudanca flipflop
+  double Vo;
   
   
   
@@ -777,13 +779,133 @@ portaNand ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 }
 
 
+void
+flipflopD (int a, int b, int c, int d, char *resetName, double V, double rOut, double cIn, int *clkMuda, double *Vo){
+	//printf("entrou - %i %.4e %.4e\r\n", *clkMuda, *Vo, en[d]);
+	double Vob;
+	
+	if(ponto==0)
+		*Vo=V;
+	
+	if (en[d]<=V/2) 
+		*clkMuda = 1;
+	
+	if (en[d]>=V/2 && *clkMuda) {
+		if(en[c] >= V/2)
+			*Vo = V;
+		else
+			*Vo = 0;
+		
+		*clkMuda = 0;
+	}
+	
+	printf("en[d]: %.3e  en[c]: %.3e  en[b]: %.3e  en[a]: %.3e\r\n\r\n", en[d], en[c], en[b], en[a]);
+	
+	if(*Vo==0){
+		Vob=V;
+		
+	}
+	else{
+		Vob=0;
+		
+	}
+	
+	printf("Vob: %.3e Vo: %.3e\r\n",Vob,*Vo);	
+		
+	condutancia(1/rOut,a, 0);
+	////I
+	corrente(*Vo/rOut, 0, a);
+	
+	condutancia(1/rOut, b, 0);
+	////I
+	corrente(Vob/rOut, 0, b);
+	
+/*	transcondutancia(10/rOut, a, 0, c, 0);
+	
+	double Vx, Vo, A1,A2;
+	double A=10;
+	
+	A = -A; //Modificação nand para and
+	
+	//printf("en[a]: %f \r\n",en[a]);
+	//printf("en[b]: %f \r\n",en[b]);
+	//printf("en[c]: %f \r\n",en[b]);
+	
+	if(en[a] > en[b]) {
+		
+		Vx = V/2 - A*(en[b] - (V/2));
+		//printf("Aqui1: Vx: %f V: %f A: %f\r\n",Vx, V, A);
+		if(Vx > V) {
+			Vo = V;
+			A1 = 0;
+			A2 =0;
+		} else {
+			if ( Vx < 0) {
+				Vo =0;
+				A1=0;
+				A2=0;
+			} else {
+				Vo = V/2 * (1 + A);
+				A1=0;
+				A2= -A;
+			}
+		}
+		
+	} else {
+		
+		Vx = V/2 - A*(en[a] - (V/2));
+		//printf("Aqui2: Vx: %f V: %f A:  %f\r\n",Vx, V, A);
+		if(Vx > V) {
+			//printf("2.1\r\n");
+			Vo = V;
+			A1 = 0;
+			A2 =0;
+		} else {
+			if ( Vx < 0) {
+				//printf("2.2\r\n");
+				Vo =0;
+				A1=0;
+				A2=0;
+			} else {
+				//printf("2.3\r\n");
+				Vo = V/2 * (1 + A);
+				A1=-A;
+				A2= 0;
+			}
+		}
+	}
+	
+	//printf("ea:%f eb:%f A1:%f A2:%f Vo:%f Ro: %f\r\n",en[a],en[b],A1,A2,Vo, rOut);
+	
+	//Modelo Linearizado
+	//resistor
+	
+	
+	condutancia(1/rOut,0, c);
+	////I
+	corrente(Vo/rOut, 0, c);
+	//////G1
+	transcondutancia(A1/rOut, 0, c, a, 0);
+	////////G2
+	transcondutancia(A2/rOut, 0, c, b, 0);
+	// capacitancia de entrada
+	//capacitor(cIn, 0, a, 0 );
+	
+	//capacitor(cIn, 0, b, 0 );*/
+}
+
+
+
+
+
+
 
 void
 portaAnd ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	double Vx, Vo, A1,A2;
 	
 	A = -A; //Modificação nand para and
-	
+	printf("A: %f", A);
 	//printf("en[a]: %f \r\n",en[a]);
 	//printf("en[b]: %f \r\n",en[b]);
 	//printf("en[c]: %f \r\n",en[b]);
@@ -995,7 +1117,7 @@ portaNor ( int c, int b, int a, double V, double rOut, double cIn, double A ) {
 	
 	//capacitor(cIn, 0, b, 0 );
 }
-
+/*
 void 
 flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V, double rOut, double cIn,int int1,int int2,int int3,int int4,int int5) {
 	
@@ -1009,7 +1131,7 @@ flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V, dou
 	portaNand(b,int4,a,V, rOut, cIn, 20); //6
 	portaAnd(int5,d,int2,V, rOut, cIn, 20);
 	
-}
+}*/
 
 
 /* Essa rotina conta os elementos nao aceitos pela analise nodal simples,
@@ -1068,7 +1190,7 @@ elementosModificada(void) {
       strcpy(lista[nv], "j");
       strcat(lista[nv], netlist[u].nome);
       netlist[u].x = nv;
-    } else if (tipo == '%') {
+    } /*else if (tipo == '%') {
 
 		char noInterno1[10], noInterno2[10], noInterno3[10], noInterno4[10],noInterno5[10];
 		strcpy(noInterno1, netlist[u].nome);
@@ -1105,7 +1227,7 @@ elementosModificada(void) {
 		netlist[u].x5 = nv;
 		strcpy(lista[nv], noInterno5);	
 		
-	}
+	}*/
   }
 }
 
@@ -1128,7 +1250,7 @@ listarTudo(void) {
       printf("%s %d %d %d %d %f\r\n", netlist[u].nome, netlist[u].a, netlist[u].b,
         netlist[u].c, netlist[u].d, netlist[u].valor);
     }
-    else if (tipo == 'O') {
+    else if (tipo == 'O' || tipo=='%') {
       printf("%s %d %d %d %d\r\n", netlist[u].nome, netlist[u].a, netlist[u].b,
         netlist[u].c, netlist[u].d);
     }
@@ -1255,34 +1377,42 @@ montarEstampas(void) {
       break;
     case '(':
       portaNand(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
-	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
-       else capacitor(netlist[u].cIn, netlist[u].c, 0,0);
-	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].a, 0);
+       else capacitor(netlist[u].cIn, netlist[u].a, 0,0);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].b, 0);
        else capacitor(netlist[u].cIn, netlist[u].b, 0,0);
       break;
     case ')':
       portaAnd(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
-	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
-       else capacitor(netlist[u].cIn, netlist[u].c, 0,0);
-	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].a, 0);
+       else capacitor(netlist[u].cIn, netlist[u].a, 0,0);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].b, 0);
        else capacitor(netlist[u].cIn, netlist[u].b, 0,0);
       break;
     case '{':
       portaNor(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
-	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
-       else capacitor(netlist[u].cIn, netlist[u].c, 0,0);
-	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].a, 0);
+       else capacitor(netlist[u].cIn, netlist[u].a, 0,0);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].b, 0);
        else capacitor(netlist[u].cIn, netlist[u].b, 0,0);
       break;
     case '}':
       portaOr(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
-	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
-       else capacitor(netlist[u].cIn, netlist[u].c, 0,0);
-	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, netlist[u].b);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].a, 0);
+       else capacitor(netlist[u].cIn, netlist[u].a, 0,0);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].b, 0);
        else capacitor(netlist[u].cIn, netlist[u].b, 0,0);
       break;
     case '%':
-	 flipflopD(netlist[u].nome,netlist[u].a,netlist[u].b,netlist[u].c,netlist[u].d,netlist[u].resetName,netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn,netlist[u].x1,netlist[u].x2,netlist[u].x3,netlist[u].x4,netlist[u].x5);
+		//portaAnd(netlist[u].a, netlist[u].c, netlist[u].d, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, 10);
+		//printf("netlist[u].a:%i, netlist[u].c:%i, netlist[u].d:%i, netlist[u].vOutMax:%.3e, netlist[u].rOut:%.3e, netlist[u].cIn:%.3e\r\n",netlist[u].a, netlist[u].c, netlist[u].d, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn);
+	    flipflopD(netlist[u].a,netlist[u].b,netlist[u].c,netlist[u].d,netlist[u].resetName,netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, &netlist[u].clkMuda, &netlist[u].Vo);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].c, 0);
+       else capacitor(netlist[u].cIn, netlist[u].c, 0,0);
+	  if (!ponto) condutancia(1 / C_PO, netlist[u].d, 0);
+       else capacitor(netlist[u].cIn, netlist[u].d, 0,0);
+	   //portaNand(netlist[u].b, netlist[u].a, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, 10);
+	   
 	break;
     case 'O':
       break;
