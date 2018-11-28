@@ -94,7 +94,8 @@ typedef struct elemento
 	double vOutMax, rOut, cIn, A; // para portas lógicas
 	int clkMuda;				  // autoriza mudanca flipflop
 	double Vo;
-
+	//Tempo monoestavel
+	double T, T0;
 } elemento;
 
 typedef int tabela[MAX_NOS + 1];
@@ -260,7 +261,7 @@ void lerNetlist(void)
 		nv = 0;
 		strcpy(lista[0], "0");
 		printf("Nome do arquivo com o netlist (ex: mna.net): ");
-		scanf("%20s", nomeArquivo);
+		scanf("%30s", nomeArquivo);
 		while (getchar() != '\n')
 		{ /* Limpando o buffer de possiveis \n */
 		}
@@ -385,7 +386,18 @@ void lerNetlist(void)
 			netlist[ne].b = numeroNo(nb);
 			netlist[ne].a = numeroNo(na);
 		}
+		else if (tipo == '@')
+		{
+			//monoestavel(netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, &netlist[u].clkMuda, netlist[u].T);
+			//Monoestável: @<nome> <nóQ+> <nóQ-> <nóTrigger> <nóReset> <V> <R> <C> <T>
+			sscanf(param, "%10s %10s %10s %10s %lf %lf %lf %lf", na, nb, nc, nd, &netlist[ne].vOutMax, &netlist[ne].rOut, &netlist[ne].cIn, &netlist[ne].T); 
+			netlist[ne].b = numeroNo(nb);
+			netlist[ne].a = numeroNo(na);
+			netlist[ne].c = numeroNo(nc);
+			netlist[ne].d = numeroNo(nd);
+			printf("nome:%s na:%i nb:%i nc:%i nd:%i v:%.4e r:%.4e c:%.4e t:%.4e\r\n", netlist[ne].nome, netlist[ne].a, netlist[ne].b,netlist[ne].c, netlist[ne].d, netlist[ne].vOutMax, netlist[ne].rOut, netlist[ne].cIn,netlist[ne].T);
 
+		}
 		else if (tipo == 'I' || tipo == 'V')
 		{
 			sscanf(param, "%10s %10s %10s", na, nb, netlist[ne].id);
@@ -856,12 +868,15 @@ void portaNand(int c, int b, int a, double V, double rOut, double cIn, double A)
 	}
 */
 
+
+
 void flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V, double rOut, double cIn, int *clkMuda, double *Vo, int aSet, int bSet, double vSet)
 {
 	//printf("entrou - %i %.4e %.4e\r\n", *clkMuda, *Vo, en[d]);
 	double Vob;
 
 	int controleSet = 0;
+	//printf("a:%i, b:%i, c:%i, d:%i, V:%.3e CLK:%i en[c]:%.3e\r\n",a, b,c ,d, V, *clkMuda, en[d]);
 
 	//printf("resetName: '%s'\r\n", resetName);
 	if (strcmp(resetName, ""))
@@ -920,7 +935,7 @@ void flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V
 	{
 		if (ponto == 0)
 		{
-			*Vo = V;
+			*Vo = 0;
 		}
 
 		if (en[d] >= V / 2 && *clkMuda)
@@ -956,6 +971,120 @@ void flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V
 	////I
 	corrente(Vob / rOut, 0, b);
 }
+
+//monoestavel(netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, &netlist[u].clkMuda, netlist[u].T);
+void monoestavel(int a, int b, int c, int d, double V, double rOut, double cIn, double T, int *clkMuda, double *Vo, double *T0 )
+{
+	//printf("a:%i, b:%i, c:%i, d:%i,Tf = %.3e, T = %.3e, V:%.3e CLK:%i en[c]:%.3e\r\n",a, b,c ,d, *T0, T, V, *clkMuda, en[c]);
+	//printf("rOut: %.3e\r\n", rOut);
+	//flipflopD("%cu", a, b, d, c, "", V, rOut, cIn, clkMuda, Vo, 0, 0, 0.0);
+//{
+	//double Vob;
+	
+	
+	double Vob, Tf=ponto*passo;
+
+	printf("TF: %.3e T0:%.3e en[c]:%.3e\r\n", Tf, *T0, en[c]);
+	
+	if (ponto == 0)
+	{
+		*Vo = 0;
+		//*clkMuda=1;
+		//printf("Ponto 0 \r\n");
+	}
+
+	if (en[c] < V / 2)
+	{
+		*clkMuda = 1;
+		//printf("Clock autorizado\r\n");
+	} 
+	
+	/*printf("entrou - %i %.4e %.4e\r\n", *clkMuda, *Vo, en[c]);*/
+	
+	if (en[c] >= V / 2 && *clkMuda)
+	{
+		printf("a\r\n");
+		*Vo = V;
+		*clkMuda = 0;
+		*T0=ponto*passo;
+	} 
+	if ((Tf-*T0)<= T && *Vo==V) {
+		printf("b\r\n");
+		*Vo = V;
+		//getchar();
+	} else {
+		printf("c\r\n");
+		*Vo = 0;
+		*clkMuda = 0;
+	}
+	
+
+	if (*Vo == 0)
+	{
+		Vob = V;
+	}
+	else
+	{
+		Vob = 0;
+	}
+	//printf("Vo:%.3e\r\n", *Vo);
+	condutancia(1 / rOut, a, 0);
+	////I
+	corrente(*Vo / rOut, 0, a);
+
+	condutancia(1 / rOut, b, 0);
+	////I
+	corrente(Vob / rOut, 0, b);
+//////////////////////////////////////
+//	if (en[c] < V / 2)
+//	{
+//		*clkMuda = 1;
+//	}
+//
+//
+//		if (ponto == 0)
+//		{
+//			*Vo = 0;
+//		}
+//
+//		if (en[c] >= V / 2 && *clkMuda)
+//		{
+//			//printf("en[aSet]: %.3e, en[bSet]: %.3e\r\n", en[aSet], en[bSet]);
+//			if (en[d] >= V / 2)
+//				*Vo = V;
+//			else
+//				*Vo = 0;
+//			*clkMuda = 0;
+//		}
+//	
+//
+//	//printf("en[d]: %.3e  en[c]: %.3e  en[b]: %.3e  en[a]: %.3e\r\n\r\n", en[d], en[c], en[b], en[a]);
+//
+//	if (*Vo == 0)
+//	{
+//		Vob = V;
+//	}
+//	else
+//	{
+//		Vob = 0;
+//	}
+//
+//	//printf("Vo: %.3e\r\n", *Vo);
+//
+//	//printf("%.3e %.3e \r\n",*Vo, Vob);
+//	condutancia(1 / rOut, a, 0);
+//	////I
+//	corrente(*Vo / rOut, 0, a);
+//
+//	condutancia(1 / rOut, b, 0);
+//	////I
+//	corrente(Vob / rOut, 0, b);
+//
+//
+//
+
+}
+
 
 void portaAnd(int c, int b, int a, double V, double rOut, double cIn, double A)
 {
@@ -1578,6 +1707,21 @@ void montarEstampas(void)
 				condutancia(1 / C_PO, netlist[u].b, 0);
 			else
 				capacitor(netlist[u].cIn, netlist[u].b, 0, 0);
+
+			break;
+		case '@':
+			//Monoestável: @<nome> <nóQ+> <nóQ-> <nóTrigger> <nóReset> <V> <R> <C> <T>, T sendo o tempo em que fica ligado com Q+=V e Q-=0
+			//printf("T: %.3e \r\n",netlist[u].T);
+			//printf("netlist[u].a: %i , netlist[u].b: %i , netlist[u].c: %i , netlist[u].d: %i, netlist[index].vOutMax: %.3e\r\n", netlist[u].a,netlist[u].b,netlist[u].c,netlist[u].d,netlist[u].vOutMax);
+			monoestavel(netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].T, &netlist[u].clkMuda,&netlist[u].Vo,&netlist[u].T0);
+			if (!ponto)
+				condutancia(1 / C_PO, netlist[u].c, 0);
+			else
+				capacitor(netlist[u].cIn, netlist[u].c, 0, 0);
+			if (!ponto)
+				condutancia(1 / C_PO, netlist[u].d, 0);
+			else
+				capacitor(netlist[u].cIn, netlist[u].d, 0, 0);
 
 			break;
 		case 'O':
