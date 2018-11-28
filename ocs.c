@@ -1,15 +1,9 @@
 /*
-	* Programa de Analise Nodal Modificada no Tempo Compacta
-	* Por: Ewerton Vasconcelso (ewerton.vasconcelos@poli.ufrj.br)
-	*      Gabriel Silva Lopes
-	*      Mateus Gonçalves Guina
-	*      Antônio Galvão
+	* OCS Open Circuit Simulator - UFRJ 2018.2 CEII
+	* Por:	Antônio Galvão (antonio.galvao@poli.ufrj.br) 
+	*		Ewerton Vasconcelos (ewerton.vasconcelos@poli.ufrj.br)
+	*       Gabriel Silva Lopes (gabrielsl1996@poliufrj.br)
 	*
-	* Baseado no programa de demonstracao de analise nodal modificada compacta
-	* do professor Antonio Carlos M. de Queiroz.
-	*
-	* Universidade Federal do Rio de Janeiro - UFRJ
-	* Circuitos Eletricos II - 2018.2
 	* Professor: Antonio Carlos M. de Queiroz (acmq@coe.ufrj.br)
 	*
 */
@@ -60,7 +54,6 @@
 #define TOLG_MIN 1e-40	// Tolerancia pivotal minima
 #define C_PO 1e9		  // Capacitor no ponto de operacao
 #define L_PO 1e-9		  // Indutor no ponto de operacao
-#define D_VMAX 0.8		  // Tensao no qual o diodo se torna linearizado
 #define NR_INICIAL 0.1	// Valores iniciais para o Newton-Raphson
 #define MAX_ITER 100	  // Maximo de iteracoes do Newton-Raphson
 #define MAX_RAND 100	  // Maximo de randomizacoes pro Newton-Raphson
@@ -68,7 +61,6 @@
 #define TOLG_NR 1e-6	  // Tolerancia de erro no NR
 #define E_MIN 1.0		  // Valor minimo entre calculo de erro absoluto ou relativo
 
-#define THETA_MIN 1e-6	// Valor minimo pra theta
 #define T_PADRAO 1e-3	 // Tempo padrao de simulacao
 #define PASSO_PADRAO 1e-5 // Passo padrao
 #define P_INT_PADRAO 1	// Quantidade padrao de passos internos
@@ -82,14 +74,11 @@ typedef struct elemento
 	double valor, j_t0; // Armazenamos a corrente do tempo anterior pra C
 	int a, b, c, d, x, y, x1, x2, x3, x4, x5;
 
-	char id[6]; // Pra identificar o tipo de Q e de fonte
+	char id[6]; // Pra identificar o tipo de fonte
 	char resetName[10];
 	int ciclos;
 	double dc, ampl_1, freq, atraso, amort, phi;
 	double ampl_2, subida, descida, ligada, periodo; // Valores exclusivos a PULSE
-
-	double Isbe, nVtbe, Isbc, nVtbc; // Para o diodo, usamos somente Isbe e nVtbe
-	double alpha, alpha_r;
 
 	double vOutMax, rOut, cIn, A; // para portas lógicas
 	int clkMuda;				  // autoriza mudanca flipflop
@@ -99,9 +88,6 @@ typedef struct elemento
 } elemento;
 
 typedef int tabela[MAX_NOS + 1];
-
-/* Declaracao de variaveis usadas no programa.
-* E mais simples usarmos globais para nao nos preocuparmos com ponteiros. */
 
 elemento netlist[MAX_ELEM];
 
@@ -317,23 +303,7 @@ void lerNetlist(void)
 			netlist[ne].c = numeroNo(nc);
 			netlist[ne].d = numeroNo(nd);
 		}
-		else if (tipo == 'D')
-		{
-			sscanf(param, "%10s %10s %lf %lf", na, nb, &netlist[ne].Isbe, &netlist[ne].nVtbe);
-			printf("%s %s %s %f %f\r\n", netlist[ne].nome, na, nb, netlist[ne].Isbe, netlist[ne].nVtbe);
-			netlist[ne].a = numeroNo(na);
-			netlist[ne].b = numeroNo(nb);
-		}
-		/*   else if (tipo == 'Q') {
-			sscanf(param, "%10s %10s %10s %10s %lf %lf %lf %lf %lf %lf", nc, nb, na, &netlist[ne].id, &netlist[ne].alpha,
-			&netlist[ne].alpha_r, &netlist[ne].Isbe, &netlist[ne].nVtbe, &netlist[ne].Isbc, &netlist[ne].nVtbc);
-			printf("%s %s %s %s %s %f %f %f %f %f %f\r\n", netlist[ne].nome, nc, nb, na, netlist[ne].id, netlist[ne].alpha,
-			netlist[ne].alpha_r, netlist[ne].Isbe, netlist[ne].nVtbe, netlist[ne].Isbc, netlist[ne].nVtbc);
-			netlist[ne].c = numeroNo(nc);
-			netlist[ne].b = numeroNo(nb);
-			netlist[ne].a = numeroNo(na);
-		}*/
-
+		
 		else if (tipo == '(' || tipo == ')' || tipo == '{' || tipo == '}')
 		{ //double vOutMax, rOut, cIn, A;
 			sscanf(param, "%10s %10s %10s %lf %lf %lf %lf", na, nb, nc, &netlist[ne].vOutMax, &netlist[ne].rOut,
@@ -486,9 +456,9 @@ void lerNetlist(void)
 
 	if (!customTran)
 		printf("/!\\ Aviso: nao foram passados valores para a analise no tempo. Serao usados os valores padrao.\r\n");
-	printf("Tempo de simulacao: %f s\r\n", tempo);
-	printf("Tamanho de Passo: %f s\r\n", passo);
-	printf("Passos internos: %i\r\n", passosInt);
+	//printf("Tempo de simulacao: %f s\r\n", tempo);
+	//printf("Tamanho de Passo: %f s\r\n", passo);
+	//printf("Passos internos: %i\r\n", passosInt);
 	getchar();
 }
 
@@ -694,81 +664,6 @@ void indutor(double l, int a, int b, int x)
 	}
 }
 
-double
-fonteDiodo(double Is, double nVt, int a, int b)
-{
-	double i0, v0;
-
-	if ((nroIteracoes == 0) && (ponto == 0))
-		v0 = 0.6;
-	else
-		v0 = en[a] - en[b];
-
-	if (v0 >= D_VMAX)
-		i0 = (Is * (exp(D_VMAX / nVt) - 1)) - ((Is * exp(D_VMAX / nVt) / nVt) * D_VMAX);
-	else
-		i0 = (Is * (exp(v0 / nVt) - 1)) - ((Is * exp(v0 / nVt) / nVt) * v0);
-
-	return i0;
-}
-
-double
-condutanciaDiodo(double Is, double nVt, int a, int b)
-{
-	double g0, v0;
-
-	if ((nroIteracoes == 0) && (ponto == 0))
-		v0 = 0.6;
-	else
-		v0 = en[a] - en[b];
-
-	if (v0 >= D_VMAX)
-		g0 = Is * exp(D_VMAX / nVt) / nVt;
-	else
-		g0 = Is * exp(v0 / nVt) / nVt;
-
-	return g0;
-}
-
-void transistor(double Isbe, double nVtbe, double Isbc, double nVtbc, double al, double al_r,
-				int c, int b, int e, char *id)
-{
-	double gc, ge, ic, ie;
-
-	if (!strcmp(id, "NPN"))
-	{
-		ge = condutanciaDiodo(Isbe, nVtbe, b, e);
-		ie = fonteDiodo(Isbe, nVtbe, b, e);
-		gc = condutanciaDiodo(Isbc, nVtbc, b, c);
-		ic = fonteDiodo(Isbc, nVtbc, b, c);
-
-		condutancia(ge, b, e);
-		corrente(ie, b, e);
-		condutancia(gc, b, c);
-		corrente(ic, b, c);
-		corrente(al * ie, c, b);
-		transcondutancia(al * ge, c, b, b, e);
-		corrente(al_r * ic, e, b);
-		transcondutancia(al_r * gc, e, b, b, c);
-	}
-	else
-	{
-		ge = condutanciaDiodo(Isbe, nVtbe, e, b);
-		ie = fonteDiodo(Isbe, nVtbe, e, b);
-		gc = condutanciaDiodo(Isbc, nVtbc, c, b);
-		ic = fonteDiodo(Isbc, nVtbc, c, b);
-
-		condutancia(ge, e, b);
-		corrente(ie, e, b);
-		condutancia(gc, c, b);
-		corrente(ic, c, b);
-		corrente(al * ie, b, c);
-		transcondutancia(al * ge, b, c, e, b);
-		corrente(al_r * ic, b, e);
-		transcondutancia(al_r * gc, b, e, c, b);
-	}
-}
-
 void portaNand(int c, int b, int a, double V, double rOut, double cIn, double A)
 {
 	double Vx, Vo, A1, A2;
@@ -853,23 +748,6 @@ void portaNand(int c, int b, int a, double V, double rOut, double cIn, double A)
 	//capacitor(cIn, 0, b, 0 );
 }
 
-/*void
-	setReset (char *resetName, int *a, int *b, double *V){
-	for (int x = 1; x <= 11; x++) {
-	printf("nome: %s, noa: %i, nob:%i\r\n",netlist[x].nome, netlist[x].a,netlist[x].b);
-	if (!strcmp(resetName, netlist[x].nome)){
-	*a = netlist[x].a;
-	*b = netlist[x].b;
-	*V = netlist[x].vOutMax;
-	//printf("aSet: %i, bSet: %i, vSet: %.3e\r\n", *a,*b,*V);			
-	}
-	
-	}
-	}
-*/
-
-
-
 void flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V, double rOut, double cIn, int *clkMuda, double *Vo, int aSet, int bSet, double vSet)
 {
 	//printf("entrou - %i %.4e %.4e\r\n", *clkMuda, *Vo, en[d]);
@@ -891,8 +769,7 @@ void flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V
 	if (ponto == 0)
 	{
 		*Vo = 0;
-		//en[bSet]=0;
-		//en[aSet]=0;
+
 	}
 
 	if (en[d] < V / 2)
@@ -975,30 +852,25 @@ void flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V
 //monoestavel(netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, &netlist[u].clkMuda, netlist[u].T);
 void monoestavel(int a, int b, int c, int d, double V, double rOut, double cIn, double T, int *clkMuda, double *Vo, double *T0 )
 {
-	//printf("a:%i, b:%i, c:%i, d:%i,T0 = %.3e, T = %.3e, V:%.3e CLK:%i rOut:%.3e\r\n",a, b,c ,d, *T0, T, V, *clkMuda, rOut);
-	//printf("rOut: %.3e\r\n", rOut);
-			
+
 	double Vob, Tf;
 	Tf = ponto*passo;
 
-	printf("ponto:%i, TF-T0:%.3e,T:%.3e, en[c]:%.3e, en[a]:%.3e, clk:%i\r\n",ponto, Tf-*T0,T, en[c],en[a], *clkMuda);
+	//printf("ponto:%i, TF-T0:%.3e,T:%.3e, en[c]:%.3e, en[a]:%.3e, clk:%i\r\n",ponto, Tf-*T0,T, en[c],en[a], *clkMuda);
 	//getchar();
 	if (ponto == 0)
 	{
 		*Vo = 0;
-		//*clkMuda=1;
-		//printf("Ponto: %i\r\n", ponto);
+
 	}
-	//else printf("saiur\r\n");
 
 	if (en[c] <= V/2)
 	{
 		*clkMuda = 1;
-		//printf("Clock autorizado, Tf: %.3e, Ponto: %i, en[c]: %.3e\r\n", Tf, ponto, en[c]);
+
 	} 
 	
-	//printf("entrou - %i %.4e %.4e\r\n", *clkMuda, *Vo, en[c]);
-	//printf("T: %.3e\r\n", T);
+
 	
 	if (en[c] >= V/2 && *clkMuda)
 	{
@@ -1016,8 +888,7 @@ void monoestavel(int a, int b, int c, int d, double V, double rOut, double cIn, 
 		if (ponto == 0)
 	{
 		*Vo = 0;
-		//*clkMuda=1;
-		//printf("Ponto: %i\r\n", ponto);
+
 	}
 
 	if (*Vo == 0)
@@ -1028,7 +899,7 @@ void monoestavel(int a, int b, int c, int d, double V, double rOut, double cIn, 
 	{
 		Vob = 0;
 	}
-	printf("Vo:%.3e, r:%.3e\r\n", *Vo,rOut);
+	//printf("Vo:%.3e, r:%.3e\r\n", *Vo,rOut);
 	condutancia(1 / rOut, a, 0);
 	////I
 	corrente(*Vo / rOut, 0, a);
@@ -1036,54 +907,6 @@ void monoestavel(int a, int b, int c, int d, double V, double rOut, double cIn, 
 	condutancia(1 / rOut, b, 0);
 	////I
 	corrente(Vob / rOut, 0, b);
-//////////////////////////////////////
-//	if (en[c] < V / 2)
-//	{
-//		*clkMuda = 1;
-//	}
-//
-//
-//		if (ponto == 0)
-//		{
-//			*Vo = 0;
-//		}
-//
-//		if (en[c] >= V / 2 && *clkMuda)
-//		{
-//			//printf("en[aSet]: %.3e, en[bSet]: %.3e\r\n", en[aSet], en[bSet]);
-//			if (en[d] >= V / 2)
-//				*Vo = V;
-//			else
-//				*Vo = 0;
-//			*clkMuda = 0;
-//		}
-//	
-//
-//	//printf("en[d]: %.3e  en[c]: %.3e  en[b]: %.3e  en[a]: %.3e\r\n\r\n", en[d], en[c], en[b], en[a]);
-//
-//	if (*Vo == 0)
-//	{
-//		Vob = V;
-//	}
-//	else
-//	{
-//		Vob = 0;
-//	}
-//
-//	//printf("Vo: %.3e\r\n", *Vo);
-//
-//	//printf("%.3e %.3e \r\n",*Vo, Vob);
-//	condutancia(1 / rOut, a, 0);
-//	////I
-//	corrente(*Vo / rOut, 0, a);
-//
-//	condutancia(1 / rOut, b, 0);
-//	////I
-//	corrente(Vob / rOut, 0, b);
-//
-//
-//
-
 }
 
 
@@ -1092,10 +915,7 @@ void portaAnd(int c, int b, int a, double V, double rOut, double cIn, double A)
 	double Vx, Vo, A1, A2;
 
 	A = -A; //Modificação nand para and
-	//printf("A: %f", A);
-	//printf("en[a]: %f \r\n",en[a]);
-	//printf("en[b]: %f \r\n",en[b]);
-	//printf("en[c]: %f \r\n",en[b]);
+
 
 	if (en[a] > en[b])
 	{
@@ -1167,10 +987,7 @@ void portaAnd(int c, int b, int a, double V, double rOut, double cIn, double A)
 	transcondutancia(A1 / rOut, 0, c, a, 0);
 	////////G2
 	transcondutancia(A2 / rOut, 0, c, b, 0);
-	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
 
-	//capacitor(cIn, 0, b, 0 );
 }
 
 void portaOr(int c, int b, int a, double V, double rOut, double cIn, double A)
@@ -1179,9 +996,7 @@ void portaOr(int c, int b, int a, double V, double rOut, double cIn, double A)
 
 	A = -A; //Modificação nand para and
 
-	//printf("en[a]: %f \r\n",en[a]);
-	//printf("en[b]: %f \r\n",en[b]);
-	//printf("en[c]: %f \r\n",en[b]);
+
 
 	if (en[a] < en[b])
 	{
@@ -1241,10 +1056,7 @@ void portaOr(int c, int b, int a, double V, double rOut, double cIn, double A)
 		}
 	}
 
-	//printf("ea:%f eb:%f A1:%f A2:%f Vo:%f Ro: %f\r\n",en[a],en[b],A1,A2,Vo, rOut);
 
-	//Modelo Linearizado
-	//resistor
 
 	condutancia(1 / rOut, 0, c);
 	////I
@@ -1253,19 +1065,13 @@ void portaOr(int c, int b, int a, double V, double rOut, double cIn, double A)
 	transcondutancia(A1 / rOut, 0, c, a, 0);
 	////////G2
 	transcondutancia(A2 / rOut, 0, c, b, 0);
-	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
 
-	//capacitor(cIn, 0, b, 0 );
 }
 
 void portaNor(int c, int b, int a, double V, double rOut, double cIn, double A)
 {
 	double Vx, Vo, A1, A2;
 
-	//printf("en[a]: %f \r\n",en[a]);
-	//printf("en[b]: %f \r\n",en[b]);
-	//printf("en[c]: %f \r\n",en[b]);
 
 	if (en[a] < en[b])
 	{
@@ -1337,29 +1143,9 @@ void portaNor(int c, int b, int a, double V, double rOut, double cIn, double A)
 	transcondutancia(A1 / rOut, 0, c, a, 0);
 	////////G2
 	transcondutancia(A2 / rOut, 0, c, b, 0);
-	// capacitancia de entrada
-	//capacitor(cIn, 0, a, 0 );
 
-	//capacitor(cIn, 0, b, 0 );
 }
-/*
-void 
-flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V, double rOut, double cIn,int int1,int int2,int int3,int int4,int int5) {
 
-//printf("%i %i %i %i %i \r\n", int1, int2, int3, int4, int5);
-
-portaNand(int3,int1,int2,V, rOut, cIn, 20); //1
-portaNand(int2,d,int3,V, rOut, cIn, 20); //2
-portaNand(int4,int1,int5,V, rOut, cIn, 20); //3
-portaNand(int1,int4,c,V, rOut, cIn, 20); //4
-portaNand(a,int2,b,V, rOut, cIn, 20); //5
-portaNand(b,int4,a,V, rOut, cIn, 20); //6
-portaAnd(int5,d,int2,V, rOut, cIn, 20);
-
-}*/
-
-/* Essa rotina conta os elementos nao aceitos pela analise nodal simples,
-* simplificando com amp. ops. ou nao, dependendo do elemento. */
 void elementosModificada(void)
 {
 	nn = nv;
@@ -1423,44 +1209,7 @@ void elementosModificada(void)
 			strcpy(lista[nv], "j");
 			strcat(lista[nv], netlist[u].nome);
 			netlist[u].x = nv;
-		} /*else if (tipo == '%') {
-
-char noInterno1[10], noInterno2[10], noInterno3[10], noInterno4[10],noInterno5[10];
-strcpy(noInterno1, netlist[u].nome);
-strcpy(noInterno2, netlist[u].nome);
-strcpy(noInterno3, netlist[u].nome);
-strcpy(noInterno4, netlist[u].nome);
-strcpy(noInterno5, netlist[u].nome);
-
-strcat(noInterno1,"1");
-strcat(noInterno2,"2");
-strcat(noInterno3,"3");
-strcat(noInterno4,"4");
-strcat(noInterno5,"5");
-
-printf("%s %s %s %s %s\r\n", noInterno1,noInterno2,noInterno3,noInterno4,noInterno5);
-nv++;    
-neq++;
-netlist[u].x1 = nv;
-strcpy(lista[nv], noInterno1);
-nv++;
-neq++;
-netlist[u].x2 = nv;
-strcpy(lista[nv], noInterno2);
-nv++;
-neq++;
-netlist[u].x3 = nv;
-strcpy(lista[nv], noInterno3);
-nv++;
-neq++;
-netlist[u].x4 = nv;
-strcpy(lista[nv], noInterno4);	
-nv++;
-neq++;
-netlist[u].x5 = nv;
-strcpy(lista[nv], noInterno5);	
-
-}*/
+		} 
 	}
 }
 
@@ -1499,7 +1248,7 @@ void listarTudo(void)
 	getchar();
 }
 
-/* Rotina que calcula a corrente no capacitor para ser usada no proximo passo. */
+/*  capacitor  proximo passo. */
 void memoriaCapacitor(void)
 {
 	double e_a, e_b;
@@ -1528,7 +1277,7 @@ void memoriaCapacitor(void)
 	}
 }
 
-/* Rotina que checa a convergencia do Newton-Raphson. */
+/*Newton-Raphson. */
 void checarConvergencia(void)
 {
 	convergiu = 1;
@@ -1568,7 +1317,6 @@ void checarConvergencia(void)
 	}
 }
 
-/* Rotina que monta as estampas dos elementos. */
 void montarEstampas(void)
 {
 
@@ -1615,16 +1363,7 @@ void montarEstampas(void)
 		case 'L':
 			indutor(netlist[u].valor, netlist[u].a, netlist[u].b, netlist[u].x);
 			break;
-		case 'D':
-			condutancia(condutanciaDiodo(netlist[u].Isbe, netlist[u].nVtbe, netlist[u].a, netlist[u].b),
-						netlist[u].a, netlist[u].b);
-			corrente(fonteDiodo(netlist[u].Isbe, netlist[u].nVtbe, netlist[u].a, netlist[u].b),
-					 netlist[u].a, netlist[u].b);
-			break;
-		case 'Q':
-			transistor(netlist[u].Isbe, netlist[u].nVtbe, netlist[u].Isbc, netlist[u].nVtbc, netlist[u].alpha,
-					   netlist[u].alpha_r, netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].id);
-			break;
+
 		case '(':
 			portaNand(netlist[u].c, netlist[u].b, netlist[u].a, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].A);
 			if (!ponto)
@@ -1688,40 +1427,20 @@ void montarEstampas(void)
 				flipflopD(netlist[u].nome, netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d, netlist[u].resetName, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, &netlist[u].clkMuda, &netlist[u].Vo, 0, 0, 0.0);
 			}
 
-			//if (!ponto)
-			//	condutancia(1 / C_PO, netlist[u].c, 0);
-			//else
+
 				capacitor(netlist[u].cIn, netlist[u].c, 0, 0);
-			//if (!ponto)
-			//	condutancia(1 / C_PO, netlist[u].d, 0);
-			//else
+
 				capacitor(netlist[u].cIn, netlist[u].d, 0, 0);
 			break;
 
 		case '!':
-			//setReset(netlist[u].a, netlist[u].b, netlist[u].vOutMax);
-			//if (!ponto)
-			//	condutancia(1 / C_PO, netlist[u].a, 0);
-			//else
-				capacitor(netlist[u].cIn, netlist[u].a, 0, 0);
-			//if (!ponto)
-			//	condutancia(1 / C_PO, netlist[u].b, 0);
-			//else
-				capacitor(netlist[u].cIn, netlist[u].b, 0, 0);
+			capacitor(netlist[u].cIn, netlist[u].a, 0, 0);
+			capacitor(netlist[u].cIn, netlist[u].b, 0, 0);
 
 			break;
 		case '@':
-			//Monoestável: @<nome> <nóQ+> <nóQ-> <nóTrigger> <nóReset> <V> <R> <C> <T>, T sendo o tempo em que fica ligado com Q+=V e Q-=0
-			//printf("T: %.3e \r\n",netlist[u].T);
-			//printf("netlist[u].a: %i , netlist[u].b: %i , netlist[u].c: %i , netlist[u].d: %i, netlist[index].vOutMax: %.3e\r\n", netlist[u].a,netlist[u].b,netlist[u].c,netlist[u].d,netlist[u].vOutMax);
 			monoestavel(netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].T, &netlist[u].clkMuda,&netlist[u].Vo,&netlist[u].T0);
-			//if (!ponto)
-			//	condutancia(1 / C_PO, netlist[u].c, 0);
-			//else
 				capacitor(netlist[u].cIn, netlist[u].c, 0, 0);
-			//if (!ponto)
-			//	condutancia(1 / C_PO, netlist[u].d, 0);
-			//else
 				capacitor(netlist[u].cIn, netlist[u].d, 0, 0);
 
 			break;
@@ -1739,21 +1458,21 @@ int main()
 
 	system("cls");
 
-	printf("Programa de Analise Nodal Modificada Compacta no Tempo (Versao %s)\r\n", versao);
-	printf("Por Ewerton V., Mateus G., Gabriel L., Antonio G. \r\n");
-	printf("Codigo base por Antonio Carlos M. de Queiroz\r\n");
+	printf("OCS  Open Circuit Simulator - Analise nodal no tempo (Versao %s)\r\n", versao);
+	printf("Por  Antonio Galvao, Ewerton Vasconcelos, Gabriel Lopes \r\n");
+	printf("Baseado em codigo do Prof. Antonio Carlos M. de Queiroz\r\n");
 	srand((unsigned int)time(NULL));
 
 	for (u = 0; u <= MAX_NOS; u++)
-	{ // Inicializacao de tabelas
+	{ 
 		C[u] = u;
 		L[u] = u;
 		t0[u] = 0.0;
 	}
 
-	lerNetlist();		   // Chamada da rotina que le o netlist
-	elementosModificada(); // Processamento de elementos da analise modificada
-	listarTudo();		   // Listagem de variaveis e elementos
+	lerNetlist();		   
+	elementosModificada(); 
+	//listarTudo();		   
 
 	passo = passo / passosInt;
 	qtdePontos = (int)round(tempo / passo);
@@ -1782,7 +1501,6 @@ int main()
 
 	valores = fopen(nome, "w");
 
-	// Escreve as variaveis calculadas na primeira linha do .tab
 	fprintf(valores, "t");
 	for (r = 1; r <= nv; r++)
 	{
@@ -1794,7 +1512,7 @@ int main()
 
 	inicio = clock();
 
-	// Inicializamos o vetor de valores do Newton-Raphson com NR_INICIAL ou 0
+	// Inicializamos o vetor de valores do Newton-Raphson 
 	for (r = 0; r <= nv; r++)
 	{
 		if (C[r])
