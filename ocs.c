@@ -975,49 +975,50 @@ void flipflopD(char *nome, int a, int b, int c, int d, char *resetName, double V
 //monoestavel(netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, &netlist[u].clkMuda, netlist[u].T);
 void monoestavel(int a, int b, int c, int d, double V, double rOut, double cIn, double T, int *clkMuda, double *Vo, double *T0 )
 {
-	//printf("a:%i, b:%i, c:%i, d:%i,Tf = %.3e, T = %.3e, V:%.3e CLK:%i en[c]:%.3e\r\n",a, b,c ,d, *T0, T, V, *clkMuda, en[c]);
+	//printf("a:%i, b:%i, c:%i, d:%i,T0 = %.3e, T = %.3e, V:%.3e CLK:%i rOut:%.3e\r\n",a, b,c ,d, *T0, T, V, *clkMuda, rOut);
 	//printf("rOut: %.3e\r\n", rOut);
-	//flipflopD("%cu", a, b, d, c, "", V, rOut, cIn, clkMuda, Vo, 0, 0, 0.0);
-//{
-	//double Vob;
-	
-	
-	double Vob, Tf=ponto*passo;
+			
+	double Vob, Tf;
+	Tf = ponto*passo;
 
-	printf("TF: %.3e T0:%.3e en[c]:%.3e\r\n", Tf, *T0, en[c]);
-	
+	printf("ponto:%i, TF-T0:%.3e,T:%.3e, en[c]:%.3e, en[a]:%.3e, clk:%i\r\n",ponto, Tf-*T0,T, en[c],en[a], *clkMuda);
+	//getchar();
 	if (ponto == 0)
 	{
 		*Vo = 0;
 		//*clkMuda=1;
-		//printf("Ponto 0 \r\n");
+		//printf("Ponto: %i\r\n", ponto);
 	}
+	//else printf("saiur\r\n");
 
-	if (en[c] < V / 2)
+	if (en[c] <= V/2)
 	{
 		*clkMuda = 1;
-		//printf("Clock autorizado\r\n");
+		//printf("Clock autorizado, Tf: %.3e, Ponto: %i, en[c]: %.3e\r\n", Tf, ponto, en[c]);
 	} 
 	
-	/*printf("entrou - %i %.4e %.4e\r\n", *clkMuda, *Vo, en[c]);*/
+	//printf("entrou - %i %.4e %.4e\r\n", *clkMuda, *Vo, en[c]);
+	//printf("T: %.3e\r\n", T);
 	
-	if (en[c] >= V / 2 && *clkMuda)
+	if (en[c] >= V/2 && *clkMuda)
 	{
-		printf("a\r\n");
+		//printf("a\r\n");
 		*Vo = V;
 		*clkMuda = 0;
 		*T0=ponto*passo;
 	} 
-	if ((Tf-*T0)<= T && *Vo==V) {
-		printf("b\r\n");
-		*Vo = V;
-		//getchar();
-	} else {
-		printf("c\r\n");
-		*Vo = 0;
-		*clkMuda = 0;
-	}
 	
+	if ((Tf-*T0) > T && *Vo==V) {
+		//printf("b\r\n");
+		*Vo = 0;
+
+	} 
+		if (ponto == 0)
+	{
+		*Vo = 0;
+		//*clkMuda=1;
+		//printf("Ponto: %i\r\n", ponto);
+	}
 
 	if (*Vo == 0)
 	{
@@ -1027,7 +1028,7 @@ void monoestavel(int a, int b, int c, int d, double V, double rOut, double cIn, 
 	{
 		Vob = 0;
 	}
-	//printf("Vo:%.3e\r\n", *Vo);
+	printf("Vo:%.3e, r:%.3e\r\n", *Vo,rOut);
 	condutancia(1 / rOut, a, 0);
 	////I
 	corrente(*Vo / rOut, 0, a);
@@ -1687,25 +1688,25 @@ void montarEstampas(void)
 				flipflopD(netlist[u].nome, netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d, netlist[u].resetName, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, &netlist[u].clkMuda, &netlist[u].Vo, 0, 0, 0.0);
 			}
 
-			if (!ponto)
-				condutancia(1 / C_PO, netlist[u].c, 0);
-			else
+			//if (!ponto)
+			//	condutancia(1 / C_PO, netlist[u].c, 0);
+			//else
 				capacitor(netlist[u].cIn, netlist[u].c, 0, 0);
-			if (!ponto)
-				condutancia(1 / C_PO, netlist[u].d, 0);
-			else
+			//if (!ponto)
+			//	condutancia(1 / C_PO, netlist[u].d, 0);
+			//else
 				capacitor(netlist[u].cIn, netlist[u].d, 0, 0);
 			break;
 
 		case '!':
 			//setReset(netlist[u].a, netlist[u].b, netlist[u].vOutMax);
-			if (!ponto)
-				condutancia(1 / C_PO, netlist[u].a, 0);
-			else
+			//if (!ponto)
+			//	condutancia(1 / C_PO, netlist[u].a, 0);
+			//else
 				capacitor(netlist[u].cIn, netlist[u].a, 0, 0);
-			if (!ponto)
-				condutancia(1 / C_PO, netlist[u].b, 0);
-			else
+			//if (!ponto)
+			//	condutancia(1 / C_PO, netlist[u].b, 0);
+			//else
 				capacitor(netlist[u].cIn, netlist[u].b, 0, 0);
 
 			break;
@@ -1714,13 +1715,13 @@ void montarEstampas(void)
 			//printf("T: %.3e \r\n",netlist[u].T);
 			//printf("netlist[u].a: %i , netlist[u].b: %i , netlist[u].c: %i , netlist[u].d: %i, netlist[index].vOutMax: %.3e\r\n", netlist[u].a,netlist[u].b,netlist[u].c,netlist[u].d,netlist[u].vOutMax);
 			monoestavel(netlist[u].a, netlist[u].b, netlist[u].c, netlist[u].d, netlist[u].vOutMax, netlist[u].rOut, netlist[u].cIn, netlist[u].T, &netlist[u].clkMuda,&netlist[u].Vo,&netlist[u].T0);
-			if (!ponto)
-				condutancia(1 / C_PO, netlist[u].c, 0);
-			else
+			//if (!ponto)
+			//	condutancia(1 / C_PO, netlist[u].c, 0);
+			//else
 				capacitor(netlist[u].cIn, netlist[u].c, 0, 0);
-			if (!ponto)
-				condutancia(1 / C_PO, netlist[u].d, 0);
-			else
+			//if (!ponto)
+			//	condutancia(1 / C_PO, netlist[u].d, 0);
+			//else
 				capacitor(netlist[u].cIn, netlist[u].d, 0, 0);
 
 			break;
